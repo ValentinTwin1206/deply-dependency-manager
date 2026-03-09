@@ -100,39 +100,7 @@ jobs:
 
             source .venv/bin/activate
 
-            echo "::group::Build environment"
-            which gcc   || { echo "::error::gcc not found"; exit 1; }
-            which ccache || { echo "::error::ccache not found"; exit 1; }
-            printenv | grep CC || true
-            echo "::endgroup::"
-
-            echo "::group::Nuitka build"
-
-            python -m nuitka \
-              --onefile \
-              --jobs=$(nproc) \
-              --assume-yes-for-downloads \
-              --show-progress \
-              --show-scons \
-              --output-filename=deply \
-              --output-dir=dist/ \
-              --include-package=rich \
-              --include-package=rich_click \
-              --include-package=click \
-              --include-package=deply \
-              --include-package-data=deply \
-              --include-distribution-metadata=deply \
-              --include-distribution-metadata=rich \
-              --include-distribution-metadata=rich-click \
-              --include-distribution-metadata=click \
-              src/deply/cli.py
-
-            echo "::endgroup::"
-
-            echo "::group::Verify binary"
-            ls -lah dist
-            ./dist/deply --help
-            echo "::endgroup::"
+            bash .github/scripts/build_binary.sh
 
       - name: Upload wheel
         if: ${{ inputs.upload_artifacts }}
