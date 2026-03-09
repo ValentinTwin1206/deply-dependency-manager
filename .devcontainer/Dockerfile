@@ -12,6 +12,7 @@ RUN apt-get update \
         patchelf \
         ccache \
         pkg-config \
+        python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # Enable ccache for faster repeated builds
