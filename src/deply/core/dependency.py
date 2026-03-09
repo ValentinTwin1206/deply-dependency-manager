@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-type packageType = Literal["dev", "optional", "prod"]
+type packageType = Literal["dev", "prod"]
 
 
 @dataclass(slots=True)
@@ -30,7 +30,7 @@ class Dependency:
 
     file - Absolute path to the file this dependency was read from.
 
-    category - Dependency classification: `"dev"`, `"optional"` or `"prod"`.
+    category - Dependency classification: `"dev"` or `"prod"`.
     """
 
     name: str

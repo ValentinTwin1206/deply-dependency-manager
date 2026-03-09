@@ -31,7 +31,6 @@ class ScanResultTableViewer:
         self.category_styles: dict[str, str] = {
             "prod": f"bold {COLOR_PEACH}",
             "dev": f"bold {COLOR_DIM_ORANGE}",
-            "optional": f"italic {COLOR_AMBER}",
         }
 
     def _styled_category(self, category: str) -> Text:

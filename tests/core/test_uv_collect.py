@@ -57,13 +57,13 @@ class TestUVPluginCollect:
         assert nuitka.category == "dev"
         assert nuitka.constraint == ">=2.0"
 
-    def test_collect_docs_group_is_optional(self, uv_project_full: Path):
-        """The 'docs' optional-dependency group is classified as 'optional'."""
+    def test_collect_docs_group_is_dev(self, uv_project_full: Path):
+        """PEP 735 [dependency-groups] are always 'dev', including 'docs'."""
         plugin = UVPlugin()
         plugin.collect(uv_project_full)
 
         mkdocs = next(d for d in plugin.dependencies if d.name == "mkdocs")
-        assert mkdocs.category == "optional"
+        assert mkdocs.category == "dev"
         assert mkdocs.constraint == ">=1.6"
 
     def test_collect_versions(self, uv_project_full: Path):

@@ -49,7 +49,7 @@ class UVPlugin(BasePlugin):
 
         Reads the lockfile via :mod:`tomllib`, extracts every locked
         package with its version and registry source, then classifies
-        each dependency as *runtime*, *dev* or *optional* based on the
+        each dependency as *prod* or *dev* based on the
         editable project block.
         """
         project_dir = Path(project_dir)
@@ -104,22 +104,17 @@ class UVPlugin(BasePlugin):
         ]
 
         # Classify non-runtime groups.
-        # Both layouts are parsed so collect() works whether the
-        # pyproject.toml declares [project.optional-dependencies]
-        # or PEP 735 [dependency-groups].
-        _DEV_GROUPS = frozenset({"dev", "build", "test", "testing"})
+        # Both optional-dependencies and dev-dependencies are non-prod → "dev".
+
+        non_runtime_names: set[str] = set()
 
         # [project.optional-dependencies]  →  uv.lock optional-dependencies
-        optional_groups: dict[str, list[str]] = {
-            group: [dep["name"] for dep in deps]
-            for group, deps in project_block.get("optional-dependencies", {}).items()
-        }
+        for _group, deps in project_block.get("optional-dependencies", {}).items():
+            non_runtime_names.update(dep["name"] for dep in deps)
 
         # PEP 735 [dependency-groups]  →  uv.lock dev-dependencies
-        dev_groups: dict[str, list[str]] = {
-            group: [dep["name"] for dep in deps]
-            for group, deps in project_block.get("dev-dependencies", {}).items()
-        }
+        for _group, deps in project_block.get("dev-dependencies", {}).items():
+            non_runtime_names.update(dep["name"] for dep in deps)
 
         # Parse version constraints from metadata.requires-dist
         metadata = project_block.get("metadata", {})
@@ -135,18 +130,13 @@ class UVPlugin(BasePlugin):
                 if "specifier" in entry:
                     constraints[entry["name"]] = entry["specifier"]
 
-        # Build category lookup
+        # Build category lookup: prod for runtime, dev for everything else
         category_map: dict[str, packageType] = {}
         for dep_name in runtime_names:
             category_map[dep_name] = "prod"
 
-        # Both optional-dependencies and dev-dependencies get the
-        # same treatment: group name decides the category.
-        for groups in (optional_groups, dev_groups):
-            for group_name, dep_names in groups.items():
-                cat: packageType = "dev" if group_name in _DEV_GROUPS else "optional"
-                for dep_name in dep_names:
-                    category_map.setdefault(dep_name, cat)
+        for dep_name in non_runtime_names:
+            category_map.setdefault(dep_name, "dev")
 
         # Build structured dependency list
         self.dependencies = [
