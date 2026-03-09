@@ -4,7 +4,7 @@ from pathlib import Path
 
 # own imports
 from deply.core.base_plugins.base import BasePlugin
-from deply.core.dependency import Dependency
+from deply.core.dependency import Dependency, packageType
 
 
 class UVPlugin(BasePlugin):
@@ -133,7 +133,7 @@ class UVPlugin(BasePlugin):
                     constraints[entry["name"]] = entry["specifier"]
 
         # Build category lookup
-        category_map: dict[str, str] = {}
+        category_map: dict[str, packageType] = {}
         for dep_name in runtime_names:
             category_map[dep_name] = "prod"
 
@@ -141,7 +141,7 @@ class UVPlugin(BasePlugin):
         # same treatment: group name decides the category.
         for groups in (optional_groups, dev_groups):
             for group_name, dep_names in groups.items():
-                cat = "dev" if group_name in _DEV_GROUPS else "optional"
+                cat: packageType = "dev" if group_name in _DEV_GROUPS else "optional"
                 for dep_name in dep_names:
                     category_map.setdefault(dep_name, cat)
 

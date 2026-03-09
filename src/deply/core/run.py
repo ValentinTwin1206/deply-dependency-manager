@@ -30,9 +30,9 @@ def run_handler(command: str, handler: Callable, options: dict):
     console = Console()
 
     # Destructure options
-    plugin_name = options.get("plugin_name")
-    project_dir = Path(options.get("project_dir")).resolve()
-    verbose = options.get("verbose", False)
+    plugin_name: str = options["plugin_name"]
+    project_dir = Path(options["project_dir"]).resolve()
+    verbose: bool = options.get("verbose", False)
 
     # Init logger
     log_level = logging.DEBUG if verbose else logging.INFO

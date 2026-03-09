@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 # own imports
@@ -19,15 +20,13 @@ class BasePlugin(Protocol):
         Human-readable identifier for the plugin (e.g. ``"uv"``).
     """
 
-
-    def __init__(self) -> None:
-        self.dependencies: list[Dependency] = []
+    dependencies: list[Dependency]
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Return the canonical name of the package manager."""
 
-    def collect(self, path: str) -> list[tuple[str, str]]:
-        """Return a list of `(package_name, version)` tuples found at *path*."""
+    def collect(self, path: str | Path) -> None:
+        """Populate *self.dependencies* from files found at *path*."""
         ...
