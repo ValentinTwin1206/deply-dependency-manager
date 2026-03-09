@@ -58,7 +58,7 @@ jobs:
           configFile: .devcontainer/devcontainer.json
           runCmd: |
 
-            set -euxo pipefail
+            set -e
 
             echo "::group::Environment"
             python --version
@@ -96,9 +96,15 @@ jobs:
           configFile: .devcontainer/devcontainer.json
           runCmd: |
 
-            set -euxo pipefail
+            set -e
 
             source .venv/bin/activate
+
+            echo "::group::Build environment"
+            which gcc   || { echo "::error::gcc not found"; exit 1; }
+            which ccache || { echo "::error::ccache not found"; exit 1; }
+            printenv | grep CC || true
+            echo "::endgroup::"
 
             echo "::group::Nuitka build"
 
