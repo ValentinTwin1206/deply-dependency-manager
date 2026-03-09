@@ -3,19 +3,23 @@ from __future__ import annotations
 import os
 import logging
 
-from typing import Literal
+from importlib.metadata import metadata
 from pathlib import Path
 
-from deply.core.base_plugins.base import BasePlugin
-from deply.core.base_plugins.uv.uv import UVPlugin
+# own imports
 from deply.utils.utils import discover_plugins, resolve_user_dir
 
 #
 # APP
 # # # # # # # #
-APP_NAME = "deply"
+APP_LICENSE = metadata("deply")["License-Expression"]
+APP_NAME = metadata("deply")["Name"]
 DEV_MODE = os.getenv("DEPLY_ENV", "production").lower() == "development"
-type packageType = Literal["dev", "optional", "prod"]
+
+#
+# PLUGINS
+# # # # # # # #
+SUPPORTED_PLUGINS: dict = discover_plugins(APP_NAME)
 
 #
 # PATHS
@@ -23,8 +27,6 @@ type packageType = Literal["dev", "optional", "prod"]
 USER_HOME = Path.home()
 DEPLY_HOME = resolve_user_dir(APP_NAME, dev_mode=DEV_MODE)
 USER_LOG_DIR = DEPLY_HOME / "logs"
-USER_CONFIG_DIR = DEPLY_HOME / "config"
-USER_DATA_DIR = DEPLY_HOME / "data"
 
 #
 # LOGGING
@@ -39,24 +41,18 @@ LOG_JSONL_FILE_NAME = f"{APP_NAME}.jsonl"
 LOG_LEVEL = logging.INFO
 
 #
-# PLUGINS
-# # # # # # # #
-BUILTIN_PLUGINS: dict[str, type[BasePlugin]] = {
-    "uv": UVPlugin,
-}
-
-# Single registry used by the CLI and run_handler.
-SUPPORTED_PLUGINS: dict[str, type[BasePlugin]] = discover_plugins(BUILTIN_PLUGINS)
-
-#
 # TUI
 # # # # # # # #
-APP_BANNER = r"""
-[bold cyan]  ____             _
- |  _ \  ___ _ __ | |_   _
- | | | |/ _ \ '_ \| | | | |
+COLOR_AMBER = "#FFBF00"           # amber
+COLOR_DIM_ORANGE = "#CD853F"      # peru
+COLOR_PEACH = "#FFDAB9"           # peach-puff
+
+APP_BANNER = f"""
+[bold {COLOR_DIM_ORANGE}]  ____             _
+ |  _ \\  ___ _ __ | |_   _
+ | | | |/ _ \\ '_ \\| | | | |
  | |_| |  __/ |_) | | |_| |
- |____/ \___| .__/|_|\__, |
-            |_|      |___/[/bold cyan]
- [dim]A modern dependency analysis CLI[/dim]
+ |____/ \\___| .__/|_|\\__, |
+            |_|      |___/[/bold {COLOR_DIM_ORANGE}]
+ [dim {COLOR_PEACH}]A modern dependency analysis CLI[/dim {COLOR_PEACH}]
 """

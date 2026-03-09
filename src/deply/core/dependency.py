@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
-# own imports
-from deply.utils.constants import packageType
+type packageType = Literal["dev", "optional", "prod"]
 
 
 @dataclass(slots=True)

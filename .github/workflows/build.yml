@@ -1,0 +1,132 @@
+name: CI (DevContainer Build & Test)
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Git release tag to verify against pyproject.toml (e.g. 1.2.3)."
+        required: false
+        default: ""
+        type: string
+      upload_artifacts:
+        description: "Upload wheel + binaries as workflow artifacts"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  build-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify release tag matches pyproject.toml
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          TAG: ${{ inputs.release_tag }}
+        run: |
+
+          # Parse tag and version
+          toml_version=$(grep '^version' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "Parsed '$TAG' as Git tag"
+          echo "Parsed '$toml_version' from pyproject.toml"
+
+          # validate
+          if [[ "$TAG" != "$toml_version" ]]; then
+            echo "::error::Tag '$TAG' does not match pyproject.toml version '$toml_version'. Update pyproject.toml before releasing."
+            exit 1
+          fi
+          echo "Tag and pyproject.toml version match ('$TAG')"
+
+      - name: Build and Run DevContainer Task
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: |
+
+            source .venv/bin/activate
+
+            echo "Running health check on 'deply'"
+            deply --help
+
+            echo "Checking src/ and tests/ for code style and common errors"
+            ruff check src/ tests/
+
+            echo "Verifying type annotations are consistent across src/"
+            mypy src/
+
+            echo "Running end-to-end tests"
+            python -m pytest tests/ -v --tb=short
+
+            echo "Building wheel"
+            uv build
+
+      - name: Upload wheel
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deply-wheel
+          path: dist/*.whl
+          retention-days: 14
+          if-no-files-found: error
+
+  build-binary:
+    name: Binary (${{ matrix.os }})
+    needs: build-wheel
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: deply-binary-linux-amd64
+            filename: deply
+          - os: windows-latest
+            artifact: deply-binary-windows-amd64
+            filename: deply-win.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Build binary with Nuitka
+        env:
+          APP_NAME: ${{ matrix.filename }}
+        run: >
+          uv run python -m nuitka
+          --onefile
+          --output-filename=$APP_NAME
+          --output-dir=dist/
+          --include-package=rich
+          --include-package=rich_click
+          --include-package=click
+          --include-package=deply
+          --include-package-data=deply
+          --include-distribution-metadata=deply
+          --include-distribution-metadata=rich
+          --include-distribution-metadata=rich-click
+          --include-distribution-metadata=click
+          src/deply/cli.py
+
+      - name: Upload binary
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.filename }}
+          retention-days: 14
+          if-no-files-found: error

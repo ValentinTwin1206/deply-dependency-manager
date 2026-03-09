@@ -15,7 +15,8 @@
                 "tamasfe.even-better-toml",
                 "eamodio.gitlens",
                 "GitHub.copilot",
-                "github.vscode-github-actions"
+                "github.vscode-github-actions",
+                "redhat.vscode-yaml"
             ]
         }
     },
@@ -23,6 +24,13 @@
         "APP_NAME": "DEPLY",
         "DEPLY_ENV": "development"
     },
-    "postCreateCommand": "uv sync --all-extras",
+    "forwardPorts": [8000],
+    "portsAttributes": {
+        "8000": {
+            "label": "MkDocs Dev Server",
+            "onAutoForward": "notify"
+        }
+    },
+    "postCreateCommand": "uv sync --all-groups",
     "remoteUser": "vscode"
 }

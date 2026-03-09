@@ -1,0 +1,16 @@
+name: Manual Dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_artifacts:
+        description: "Uploads wheel + binary as workflow artifacts"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      upload_artifacts: ${{ inputs.upload_artifacts }}

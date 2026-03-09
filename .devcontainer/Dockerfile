@@ -18,4 +18,7 @@ ENV PYTHONUNBUFFERED=1
 ENV DEPDEX_ENV=development
 ENV APP_NAME=DEPDEX
 
+# MkDocs dev server port
+EXPOSE 8000
+
 USER vscode

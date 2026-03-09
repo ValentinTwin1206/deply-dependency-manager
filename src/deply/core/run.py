@@ -1,39 +1,59 @@
 import logging
+from pathlib import Path
+from typing import Callable
+
+# third-party imports
+from rich.console import Console
 
 # own imports
-from deply.commands.scan import scan_handler
 from deply.core.factory import PluginFactory
+from deply.utils.constants import SUPPORTED_PLUGINS
 from deply.utils.logger import get_logger
 
 
-def run_handler(plugin_name: str, command: str, project_dir: str, verbose: bool):
+def run_handler(command: str, handler: Callable, options: dict):
     """Resolve a plugin by name and execute the requested command.
 
     Uses :class:`~deply.core.factory.PluginFactory` to instantiate the plugin
-    from the registry and dispatches the given `command` (e.g. `"scan"`).
+    from the registry and dispatches the given `command` via the provided
+    `handler` callable.
 
     Parameters
     ----------
-    plugin_name - Key in `PLUGIN_REGISTRY` identifying the plugin (e.g. `"uv"`).
+    command - The action to perform (e.g. `"scan"`).
 
-    command - The action to perform. Currently supported: `"scan"`.
+    handler - A callable that implements the command logic.
 
-    project_dir - Path to the project directory to analyse.
-
-    verbose - When `True`, enable debug-level logging.
+    options - A dict of CLI options (e.g. `plugin_name`, `project_dir`, `verbose`).
     """
-    
+
+    console = Console()
+
+    # Destructure options
+    plugin_name = options.get("plugin_name")
+    project_dir = Path(options.get("project_dir")).resolve()
+    verbose = options.get("verbose", False)
+
+    # Init logger
     log_level = logging.DEBUG if verbose else logging.INFO
     logger = get_logger(command, level=log_level)
-    
 
     try:
+        logger.info(f"Executing command '{command}' with plugin '{plugin_name}' on project '{project_dir}'")
+        logger.info(f"Supported plugins: {', '.join(SUPPORTED_PLUGINS)}")
         plugin = PluginFactory.create(plugin_name)
-    except (ValueError, TypeError) as exc:
-        logger.error(str(exc))
-        return
+        logger.debug(f"Resolved plugin '{plugin_name}': {plugin}")
 
-    if command == "scan":
-        scan_handler(plugin, project_dir)
-    else:
-        logger.error(f"Unknown command '{command}' for plugin '{plugin_name}'.")
+        # Execute public handler under '/commands/<command>/<command>.py'
+        logger.info(f"Running handler for command '{command}'...")
+        handler(plugin, project_dir, logger)
+
+        logger.info(f"Command '{command}' executed successfully. Terminating with exit code 0.")
+        return 0
+    
+    except Exception as exc:
+        logger.warning("Execution of command %r failed", command)
+        logger.error(exc)
+        console.print(f"{exc!s}")
+        console.print("[bold red]Terminating DepDex with exit code '1'.[/bold red]")
+        return 1

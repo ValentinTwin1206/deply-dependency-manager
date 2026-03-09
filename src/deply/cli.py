@@ -1,13 +1,26 @@
+import sys
+
+# third-party imports
 import rich_click as click
 
+from deply.commands.scan import scan_handler
 from deply.core.run import run_handler
-from deply.utils.constants import APP_BANNER, SUPPORTED_PLUGINS
+from deply.utils.constants import APP_BANNER, COLOR_DIM_ORANGE, COLOR_PEACH, SUPPORTED_PLUGINS
 
 # rich-click styling
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
 click.rich_click.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (1, 2)
 click.rich_click.HEADER_TEXT = APP_BANNER
+click.rich_click.STYLE_COMMAND = COLOR_DIM_ORANGE
+click.rich_click.STYLE_OPTION = COLOR_DIM_ORANGE
+click.rich_click.STYLE_SWITCH = COLOR_PEACH
+click.rich_click.STYLE_USAGE = f"bold {COLOR_PEACH}"
+click.rich_click.STYLE_USAGE_COMMAND = f"bold {COLOR_DIM_ORANGE}"
+click.rich_click.STYLE_USAGE_SEPARATOR = COLOR_DIM_ORANGE
+click.rich_click.STYLE_METAVAR = COLOR_PEACH
+click.rich_click.STYLE_METAVAR_APPEND = COLOR_PEACH
+click.rich_click.STYLE_ARGUMENT = COLOR_PEACH
 click.rich_click.COMMAND_GROUPS = {
     "deply": [{"name": "Package Managers", "commands": list(SUPPORTED_PLUGINS.keys())}]
 }
@@ -20,7 +33,19 @@ def main():
 
 
 def _register_plugin(plugin_name: str):
-    """Register a plugin as a Click subgroup with its commands."""
+    """Register a plugin as a Click subgroup with its commands.
+
+    Creates a new :func:`click.Group` attached to :func:`main` and registers
+    all available sub-commands (e.g. `scan`) under it.  This function is
+    called at **module import time** for every key in
+    :data:`~deply.core.registry.SUPPORTED_PLUGINS` so that the commands are
+    available before Click parses the CLI arguments.
+
+    Parameters
+    ----------
+    plugin_name : str
+        Key in `SUPPORTED_PLUGINS` identifying the plugin (e.g. `"uv"`).
+    """
 
     @main.group(plugin_name, help=f"Commands for the {plugin_name} plugin.")
     @click.pass_context
@@ -29,6 +54,10 @@ def _register_plugin(plugin_name: str):
         ctx.ensure_object(dict)
         ctx.obj["plugin_name"] = plugin_name
 
+
+    #
+    # SCAN COMMAND
+    # # # # # # # #
     @plugin_group.command("scan")
     @click.option(
         "--project-dir",
@@ -42,12 +71,19 @@ def _register_plugin(plugin_name: str):
         help="Enable verbose logging."
     )
     @click.pass_context
-    def scan_cmd(ctx, project_dir, verbose):
+    def scan(ctx, project_dir, verbose):
         """Scan project dependencies using the selected plugin."""
-        run_handler(ctx.obj["plugin_name"], "scan", project_dir, verbose)
+        options = {
+            "plugin_name": ctx.obj["plugin_name"],
+            "project_dir": project_dir,
+            "verbose": verbose,
+        }
+        sys.exit(run_handler("scan", scan_handler, options))
 
 
-# Dynamically register all available plugins as CLI subgroups
+#
+# PLUGIN REGISTRATION
+# # # # # # # # #
 for _name in SUPPORTED_PLUGINS:
     _register_plugin(_name)
 

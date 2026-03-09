@@ -8,13 +8,28 @@ dependencies = [
     "rich-click>=1.7.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocs-mermaid2-plugin>=1.1",
+]
+
 [project.scripts]
 deply = "deply.cli:main"
 
-# This is the magic part for plugin support
+# Plugin support
 [project.entry-points."deply.plugins"]
 uv = "deply.core.base_plugins.uv.uv:UVPlugin"
+vsc = "deply.core.base_plugins.uv.vsc:VSCPlugin"
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

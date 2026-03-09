@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# own imports
 from deply.core.base_plugins.base import BasePlugin
 from deply.utils.constants import SUPPORTED_PLUGINS
 
@@ -22,8 +23,7 @@ class PluginFactory:
 
         Parameters
         ----------
-        plugin_name:
-            Key in `SUPPORTED_PLUGINS` (e.g. `"uv"`).
+        plugin_name - Key in `SUPPORTED_PLUGINS` (e.g. `"uv"`).
 
         Raises
         ------
