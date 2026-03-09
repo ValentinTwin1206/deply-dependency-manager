@@ -10,6 +10,9 @@ from deply.core.dependency import Dependency, packageType
 class UVPlugin(BasePlugin):
     """Plugin for **uv**."""
 
+    def __init__(self) -> None:
+        self.dependencies: list[Dependency] = []
+
     @property
     def name(self) -> str:
         return "uv"

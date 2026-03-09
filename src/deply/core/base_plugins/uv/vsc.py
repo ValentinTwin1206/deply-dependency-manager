@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 # own imports
-# own imports
 from deply.core.base_plugins.base import BasePlugin
 from deply.core.dependency import Dependency
 
@@ -13,7 +12,7 @@ class VSCPlugin(BasePlugin):
     """Plugin for **VS Code** extensions."""
 
     def __init__(self) -> None:
-        super().__init__()
+        self.dependencies: list[Dependency] = []
         self._marketplace_url = "https://marketplace.visualstudio.com"
 
     @property
