@@ -100,13 +100,19 @@ class UVPlugin(BasePlugin):
             dep["name"] for dep in project_block.get("dependencies", [])
         ]
 
-        # Parse optional-dependency groups (dev, docs, …)
+        # Classify non-runtime groups.
+        # Both layouts are parsed so collect() works whether the
+        # pyproject.toml declares [project.optional-dependencies]
+        # or PEP 735 [dependency-groups].
+        _DEV_GROUPS = frozenset({"dev", "build", "test", "testing"})
+
+        # [project.optional-dependencies]  →  uv.lock optional-dependencies
         optional_groups: dict[str, list[str]] = {
             group: [dep["name"] for dep in deps]
             for group, deps in project_block.get("optional-dependencies", {}).items()
         }
 
-        # Parse dev-dependency groups (PEP 735 / uv dependency-groups)
+        # PEP 735 [dependency-groups]  →  uv.lock dev-dependencies
         dev_groups: dict[str, list[str]] = {
             group: [dep["name"] for dep in deps]
             for group, deps in project_block.get("dev-dependencies", {}).items()
@@ -130,13 +136,14 @@ class UVPlugin(BasePlugin):
         category_map: dict[str, str] = {}
         for dep_name in runtime_names:
             category_map[dep_name] = "prod"
-        for group_name, dep_names in optional_groups.items():
-            cat = "dev" if group_name == "dev" else "optional"
-            for dep_name in dep_names:
-                category_map[dep_name] = cat
-        for group_name, dep_names in dev_groups.items():
-            for dep_name in dep_names:
-                category_map.setdefault(dep_name, "dev")
+
+        # Both optional-dependencies and dev-dependencies get the
+        # same treatment: group name decides the category.
+        for groups in (optional_groups, dev_groups):
+            for group_name, dep_names in groups.items():
+                cat = "dev" if group_name in _DEV_GROUPS else "optional"
+                for dep_name in dep_names:
+                    category_map.setdefault(dep_name, cat)
 
         # Build structured dependency list
         self.dependencies = [

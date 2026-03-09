@@ -13,6 +13,16 @@ version = "14.3.3"
 source = { registry = "https://pypi.org/simple" }
 
 [[package]]
+name = "mkdocs"
+version = "1.6.1"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "nuitka"
+version = "2.6.7"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
 name = "myapp"
 version = "0.1.0"
 source = { editable = "." }
@@ -21,19 +31,32 @@ dependencies = [
     { name = "rich" },
 ]
 
+# PEP 735 dependency-groups  →  dev-dependencies
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+]
+build = [
+    { name = "nuitka" },
+]
+
+# [project.optional-dependencies]  →  optional-dependencies
+[package.optional-dependencies]
+docs = [
+    { name = "mkdocs" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
+    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6" },
     { name = "rich", specifier = ">=13.7.0" },
 ]
+provides-extras = ["docs"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
+build = [{ name = "nuitka", specifier = ">=2.0" }]
 
 [[package]]
 name = "pytest"

@@ -48,6 +48,24 @@ class TestUVPluginCollect:
         pytest_dep = next(d for d in plugin.dependencies if d.name == "pytest")
         assert pytest_dep.constraint == ">=8.0"
 
+    def test_collect_build_group_is_dev(self, uv_project_full: Path):
+        """The 'build' dev-dependency group is classified as 'dev'."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_full)
+
+        nuitka = next(d for d in plugin.dependencies if d.name == "nuitka")
+        assert nuitka.category == "dev"
+        assert nuitka.constraint == ">=2.0"
+
+    def test_collect_docs_group_is_optional(self, uv_project_full: Path):
+        """The 'docs' optional-dependency group is classified as 'optional'."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_full)
+
+        mkdocs = next(d for d in plugin.dependencies if d.name == "mkdocs")
+        assert mkdocs.category == "optional"
+        assert mkdocs.constraint == ">=1.6"
+
     def test_collect_versions(self, uv_project_full: Path):
         """Locked versions are captured from the lockfile."""
         plugin = UVPlugin()

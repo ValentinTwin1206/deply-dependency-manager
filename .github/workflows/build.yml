@@ -13,12 +13,17 @@ on:
         required: false
         default: false
         type: boolean
+      build_binary:
+        description: "Build a standalone Nuitka binary"
+        required: false
+        default: false
+        type: boolean
 
 env:
   PYTHON_VERSION: "3.12"
 
 jobs:
-  build-wheel:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -42,7 +47,7 @@ jobs:
           fi
           echo "Tag and pyproject.toml version match ('$TAG')"
 
-      - name: Build and Run DevContainer Task
+      - name: Lint, test & build wheel
         uses: devcontainers/ci@v0.3
         with:
           configFile: .devcontainer/devcontainer.json
@@ -65,6 +70,34 @@ jobs:
             echo "Building wheel"
             uv build
 
+      - name: Build binary with Nuitka
+        if: ${{ inputs.build_binary }}
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: |
+
+            source .venv/bin/activate
+
+            python -m nuitka \
+              --onefile \
+              --assume-yes-for-downloads \
+              --output-filename=deply \
+              --output-dir=dist/ \
+              --include-package=rich \
+              --include-package=rich_click \
+              --include-package=click \
+              --include-package=deply \
+              --include-package-data=deply \
+              --include-distribution-metadata=deply \
+              --include-distribution-metadata=rich \
+              --include-distribution-metadata=rich-click \
+              --include-distribution-metadata=click \
+              src/deply/cli.py
+
+            echo "Verifying binary"
+            ./dist/deply --help
+
       - name: Upload wheel
         if: ${{ inputs.upload_artifacts }}
         uses: actions/upload-artifact@v4
@@ -74,59 +107,11 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  build-binary:
-    name: Binary (${{ matrix.os }})
-    needs: build-wheel
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact: deply-binary-linux-amd64
-            filename: deply
-          - os: windows-latest
-            artifact: deply-binary-windows-amd64
-            filename: deply-win.exe
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Build binary with Nuitka
-        env:
-          APP_NAME: ${{ matrix.filename }}
-        run: >
-          uv run python -m nuitka
-          --onefile
-          --output-filename=$APP_NAME
-          --output-dir=dist/
-          --include-package=rich
-          --include-package=rich_click
-          --include-package=click
-          --include-package=deply
-          --include-package-data=deply
-          --include-distribution-metadata=deply
-          --include-distribution-metadata=rich
-          --include-distribution-metadata=rich-click
-          --include-distribution-metadata=click
-          src/deply/cli.py
-
       - name: Upload binary
-        if: ${{ inputs.upload_artifacts }}
+        if: ${{ inputs.build_binary && inputs.upload_artifacts }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.filename }}
+          name: deply-binary-linux-amd64
+          path: dist/deply
           retention-days: 14
           if-no-files-found: error

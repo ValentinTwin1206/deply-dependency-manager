@@ -14,9 +14,9 @@ RUN apt-get update \
 # Keep Python from buffering stdout/stderr
 ENV PYTHONUNBUFFERED=1
 
-# Set DepDex to development mode
-ENV DEPDEX_ENV=development
-ENV APP_NAME=DEPDEX
+# Set Deply to development mode
+ENV APP_NAME=DEPLY
+ENV DEPLY_ENV=development
 
 # MkDocs dev server port
 EXPOSE 8000
