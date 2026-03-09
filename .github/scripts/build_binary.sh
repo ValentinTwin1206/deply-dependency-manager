@@ -54,6 +54,7 @@ python -m nuitka \
   --assume-yes-for-downloads \
   --output-filename="$OUTPUT_NAME" \
   --output-dir="$OUTPUT_DIR" \
+  --clean-cache=ccache \
   --include-package=rich \
   --include-package=rich_click \
   --include-package=click \
