@@ -148,8 +148,8 @@ ENV/
 env.bak/
 venv.bak/
 
-# DepDex local data (dev mode)
-.depdex/
+# Deply local data (dev mode)
+.deply/
 
 # Spyder project settings
 .spyderproject
@@ -215,6 +215,3 @@ __marimo__/
 
 # MkDocs
 site/
-
-# deply workspace
-.deply

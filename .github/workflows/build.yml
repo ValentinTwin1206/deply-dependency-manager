@@ -9,18 +9,19 @@ on:
         default: ""
         type: string
       upload_artifacts:
-        description: "Upload wheel + binaries as workflow artifacts"
+        description: "Upload wheel as a workflow artifact"
         required: false
         default: false
         type: boolean
-      build_binary:
-        description: "Build a standalone Nuitka binary"
+      uv_version:
+        description: "uv version to install in the DevContainer (e.g. 0.10.9)"
         required: false
-        default: false
-        type: boolean
+        default: "0.10.9"
+        type: string
 
 env:
   PYTHON_VERSION: "3.12"
+  UV_VERSION: ${{ inputs.uv_version }}
 
 jobs:
   build:
@@ -89,21 +90,6 @@ jobs:
             ls -lah dist
             echo "::endgroup::"
 
-      - name: Build binary with Nuitka
-        id: nuitka
-        if: ${{ inputs.build_binary }}
-        continue-on-error: true
-        uses: devcontainers/ci@v0.3
-        with:
-          configFile: .devcontainer/devcontainer.json
-          runCmd: |
-
-            set -e
-
-            source .venv/bin/activate
-
-            bash .github/scripts/build_binary.sh
-
       - name: Upload wheel
         if: ${{ inputs.upload_artifacts }}
         uses: actions/upload-artifact@v4
@@ -113,15 +99,14 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Warn on Nuitka failure
-        if: ${{ steps.nuitka.outcome == 'failure' }}
-        run: echo "::warning::Nuitka binary build failed — skipping binary upload"
-
-      - name: Upload binary
-        if: ${{ steps.nuitka.outcome == 'success' && inputs.upload_artifacts }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: deply-binary-linux-amd64
-          path: dist/deply
-          retention-days: 14
-          if-no-files-found: error
+      - name: Rename and upload wheel to GitHub Release
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ inputs.release_tag }}"
+          src=$(ls dist/*.whl)
+          dest="dist/deply_${version}.whl"
+          mv "$src" "$dest"
+          gh release upload "$version" "$dest" --clobber

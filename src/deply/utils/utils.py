@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def resolve_user_dir(app_name: str, *, dev_mode: bool) -> Path:
-    """Return the user-level base directory for DepDex.
+    """Return the user-level base directory for Deply.
 
     Parameters
     ----------

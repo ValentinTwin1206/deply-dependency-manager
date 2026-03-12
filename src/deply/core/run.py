@@ -56,5 +56,5 @@ def run_handler(command: str, handler: Callable, options: dict):
         logger.warning("Execution of command %r failed", command)
         logger.error(exc)
         console.print(f"{exc!s}")
-        console.print("[bold red]Terminating DepDex with exit code '1'.[/bold red]")
+        console.print("[bold red]Terminating Deply with exit code '1'.[/bold red]")
         return 1

@@ -4,9 +4,13 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   call-build:
     uses: ./.github/workflows/build.yml
     with:
       release_tag: ${{ github.event.release.tag_name }}
-      upload_artifacts: true
+      upload_artifacts: false
+      uv_version: "0.10.9"

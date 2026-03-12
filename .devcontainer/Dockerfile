@@ -1,23 +1,9 @@
-FROM mcr.microsoft.com/devcontainers/python:3.12
+ARG PYTHON_VERSION
+FROM mcr.microsoft.com/devcontainers/python:${PYTHON_VERSION}
 
 # Install uv (fast Python package manager)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-# Install Nuitka build dependencies
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-        gcc \
-        g++ \
-        make \
-        patchelf \
-        ccache \
-        pkg-config \
-        python3-dev \
- && rm -rf /var/lib/apt/lists/*
-
-# Enable ccache for faster repeated builds
-ENV CC="ccache gcc"
-ENV CXX="ccache g++"
+ARG UV_VERSION=0.10.9
+COPY --from=ghcr.io/astral-sh/uv:${UV_VERSION} /uv /uvx /usr/local/bin/
 
 # Prevent Python stdout buffering
 ENV PYTHONUNBUFFERED=1

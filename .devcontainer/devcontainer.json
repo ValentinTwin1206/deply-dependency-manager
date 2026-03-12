@@ -2,7 +2,11 @@
     "name": "Deply DevContainer",
     "build": {
         "context": "..",
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        "args": {
+            "PYTHON_VERSION": "${localEnv:PYTHON_VERSION:3.12}",
+            "UV_VERSION": "${localEnv:UV_VERSION:0.10.9}"
+        }
     },
     "customizations": {
         "vscode": {

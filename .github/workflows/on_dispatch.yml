@@ -4,19 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       upload_artifacts:
-        description: "Uploads wheel + binary as workflow artifacts"
+        description: "Uploads wheel as a workflow artifact"
         required: false
         default: false
         type: boolean
-      build_binary:
-        description: "Build a standalone Nuitka binary"
+      uv_version:
+        description: "uv version to install in the DevContainer (e.g. 0.10.9)"
         required: false
-        default: false
-        type: boolean
+        default: "0.10.9"
+        type: string
+
 
 jobs:
   call-build:
     uses: ./.github/workflows/build.yml
     with:
       upload_artifacts: ${{ inputs.upload_artifacts }}
-      build_binary: ${{ inputs.build_binary }}
+      uv_version: ${{ inputs.uv_version }}
