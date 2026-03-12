@@ -7,7 +7,7 @@ from rich.table import Table
 from rich.text import Text
 
 from deply.core.plugins.dependency import Dependency
-from deply.utils.constants import COLOR_AMBER, COLOR_DIM_ORANGE, COLOR_PEACH
+from deply.utils.constants import COLOR_DIM_ORANGE, COLOR_PEACH
 
 
 class ScanResultTableViewer:
