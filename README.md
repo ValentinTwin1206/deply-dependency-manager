@@ -1,8 +1,27 @@
 # Depsight - Dependency Analysis Framework
 
-## Installation
+## Usage
 
-Coming soon..
+### Installation
+
+Go to the [Releases](../../releases/latest) page of the Depsigt GitHub repository and download the `.whl` file from the latest release
+
+
+#### Pip
+
+```bash
+pip install depsight-<version>-py3-none-any.whl
+```
+
+#### uv
+
+```bash
+uv tool install depsight-<version>-py3-none-any.whl
+```
+
+### Getting Started
+
+Coming soon...
 
 ## Development
 
