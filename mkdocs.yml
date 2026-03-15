@@ -1,0 +1,27 @@
+site_name: Depsight - Dependency Analysis Framework
+site_description: A modular dependency analysis framework for local workspaces
+
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - Development: development/index.md
+  - Instructions:
+      - Getting Started:
+          - Getting Started: instructions/getting-started/getting-started.md
+      - Tasks:
+          - "Task 1: Write an NPM Plugin": instructions/tasks/task-1-write-a-npm-plugin.md
+          - "Task 2: Scan Dependencies": instructions/tasks/task-2-scan-dependencies.md
+          - "Task 3: Containerize Your Application": instructions/tasks/task-3-containerize-your-application.md
