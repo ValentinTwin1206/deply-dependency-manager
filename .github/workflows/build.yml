@@ -3,20 +3,21 @@ name: CI (DevContainer Build & Test)
 on:
   workflow_call:
     inputs:
-      release_tag:
-        description: "Git release tag to verify against pyproject.toml (e.g. 1.2.3)."
-        required: false
-        default: ""
+      depsight_version:
+        description: "Depsight version from pyproject.toml (e.g. 1.2.3)."
+        required: true
         type: string
+      is_release:
+        description: "Whether this is a release build (uploads wheel to GitHub Release)."
+        required: false
+        type: boolean
       upload_artifacts:
         description: "Upload wheel as a workflow artifact"
         required: false
-        default: false
         type: boolean
       uv_version:
         description: "uv version to install in the DevContainer (e.g. 0.10.9)"
-        required: false
-        default: "0.10.9"
+        required: true
         type: string
 
 env:
@@ -31,25 +32,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify release tag matches pyproject.toml
-        if: ${{ inputs.release_tag != '' }}
+      - name: Verify depsight_version matches pyproject.toml
         env:
-          TAG: ${{ inputs.release_tag }}
+          VERSION: ${{ inputs.depsight_version }}
         run: |
           set -euo pipefail
 
           echo "::group::Version check"
 
           toml_version=$(grep '^version' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-          echo "Parsed '$TAG' as Git tag"
-          echo "Parsed '$toml_version' from pyproject.toml"
+          echo "Input version: '$VERSION'"
+          echo "pyproject.toml version: '$toml_version'"
 
-          if [[ "$TAG" != "$toml_version" ]]; then
-            echo "::error::Tag '$TAG' does not match pyproject.toml version '$toml_version'"
+          if [[ "$VERSION" != "$toml_version" ]]; then
+            echo "::error::Input version '$VERSION' does not match pyproject.toml version '$toml_version'"
             exit 1
           fi
 
-          echo "Tag and pyproject.toml version match ('$TAG')"
+          echo "Versions match ('$VERSION')"
 
           echo "::endgroup::"
 
@@ -100,9 +100,9 @@ jobs:
           if-no-files-found: error
 
       - name: Upload wheel to GitHub Release
-        if: ${{ inputs.release_tag != '' }}
+        if: ${{ inputs.is_release }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release upload "${{ inputs.release_tag }}" dist/*.whl --clobber
+          gh release upload "${{ inputs.depsight_version }}" dist/*.whl --clobber
