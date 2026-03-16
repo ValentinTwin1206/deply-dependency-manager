@@ -6,7 +6,10 @@ With the [NPM plugin implemented](./task-1-write-a-npm-plugin.md), an `npm` comm
 
 ![Depsight CLI](../../images/depsight_npm_cli.png)
 
-Your next task is to **scan the project dependencies** of the [target NPM project](../getting-started/getting-started.md#clone-the-target-npm-repository) using the built-in plugin `vsce` and your third-party plugin `npm`. Run a dependency scan with each plugin individually. Both plugins support an option to export the discovered dependencies as a CSV file. You have to use this option for each scan so you end up with two separate CSV exports, one per plugin.
+Your next task is to **scan the project dependencies** of the target ['fancy-fileserver'](https://github.com/ValentinTwin1206/fancy-fileserver) project using the built-in plugin `vsce` and your third-party plugin `npm`. Run a dependency scan with each plugin individually. Both plugins support an option to export the discovered dependencies as a CSV file. You have to use this option for each scan so you end up with two separate CSV exports, one per plugin.
+
+!!! info "Fancy Fileserver Already Packaged"
+    The `fancy-fileserver` repository is already available inside the DevContainer environment under `~/fancy-fileserver`.
 
 ## Hints
 

@@ -1,0 +1,11 @@
+.tag-green {
+    display: inline-block;
+    padding: 0 0.5em;
+    border-radius: 0.25em;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background-color: #d4edda;
+    color: #1a6630;
+}

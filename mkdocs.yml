@@ -13,8 +13,12 @@ theme:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.details
   - pymdownx.superfences
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Development: development/index.md
@@ -24,4 +28,4 @@ nav:
       - Tasks:
           - "Task 1: Write an NPM Plugin": instructions/tasks/task-1-write-a-npm-plugin.md
           - "Task 2: Scan Dependencies": instructions/tasks/task-2-scan-dependencies.md
-          - "Task 3: Containerize Your Application": instructions/tasks/task-3-containerize-your-application.md
+          - "Task 3: Package and Publish Your Plugin": instructions/tasks/task-3-package-and-publish-your-plugin.md
