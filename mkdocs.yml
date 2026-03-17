@@ -27,5 +27,5 @@ nav:
           - Getting Started: instructions/getting-started/getting-started.md
       - Tasks:
           - "Task 1: Write an NPM Plugin": instructions/tasks/task-1-write-a-npm-plugin.md
-          - "Task 2: Scan Dependencies": instructions/tasks/task-2-scan-dependencies.md
-          - "Task 3: Package and Publish Your Plugin": instructions/tasks/task-3-package-and-publish-your-plugin.md
+          - "Task 2: Package and Publish Your Plugin": instructions/tasks/task-2-package-and-publish-your-plugin.md
+          - "Task 3: Scan Dependencies": instructions/tasks/task-3-scan-dependencies.md
