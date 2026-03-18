@@ -21,66 +21,39 @@ git clone https://github.com/ValentinTwin1206/fancy-fileserver.git /workspaces/f
 
 ### NPM Dependencies
 
-We are focusing on the `package-lock.json` file that records the **exact dependency tree** of a project to ensure consistent and repeatable installations.
+Your NPM plugin should parse the `package-lock.json` file, which records the full resolved dependency tree of a project. All direct and transitive dependencies are listed under the `packages` key.
 
-- **Exact Versions**  
-  Each dependency is locked to a specific version. This prevents unexpected changes when installing packages later.
+The root entry (`""`) declares direct dependencies with their **version constraints** (`dependencies`, `devDependencies`). Every other entry represents an installed package under `node_modules/` and provides its **resolved version**, **registry URL**, and whether it is a **dev dependency**.
 
-- **Dependency Tree**  
-  The file includes not only direct dependencies but also all nested (transitive) dependencies required by them.
-
-- **Resolved Sources**  
-  It stores where each package was downloaded from (e.g., registry URL).
-
-- **Integrity Checks**  
-  Hashes are included to verify that installed packages have not been altered.
-
-Below is a simplified example (based on `package-lock.json`) showing how dependencies are declared:
+Below is a simplified example showing the relevant fields:
 
 ```json
 {
-  "name": "fancy-file-server",
-  "version": "0.1.0",
-  "lockfileVersion": 3,
-  "requires": true,
   "packages": {
     "": {
-      "name": "fancy-file-server",
-      "version": "0.1.0",
       "dependencies": {
-        "ajv": "^8.17.1",
-        "bcrypt": "^5.1.0",
-        "fastify": "^4.23.0",
-        "redis": "^4.6.13"
+        "fastify": "^4.23.0"        // → Dependency.constraint
       },
       "devDependencies": {
-        "@faker-js/faker": "^10.0.0",
-        "@playwright/test": "^1.57.0",
-        "artillery": "^2.0.27",
-        "bun-types": "^1.3.0",
-        "playwright": "^1.57.0"
+        "artillery": "^2.0.27"      // → Dependency.constraint, Dependency.category = "dev"
       }
     },
-     "node_modules/@artilleryio/int-commons": {
-      "version": "2.18.0",
-      "resolved": "https://registry.npmjs.org/@artilleryio/int-commons/-/int-commons-2.18.0.tgz",
-      "integrity": "sha512-wPxDDEvKXg/LqbRpUlJ5/Tw702l+WPav9K8HW0MAqd6Oy53EwhNBG8UK1IlY3yqy1m8Dc3yHQPNrM+UJUZzVBw==",
-      "dev": true,
-      "license": "MPL-2.0",
-      "dependencies": {
-        "async": "^2.6.4",
-        "cheerio": "^1.0.0-rc.10",
-        "debug": "^4.4.1",
-        "deep-for-each": "^3.0.0",
-        "espree": "^9.4.1",
-        "jsonpath-plus": "^10.0.0",
-        "lodash": "^4.17.19",
-        "ms": "^2.1.3"
-      }
+    "node_modules/fastify": {
+      "version": "4.28.1",          // → Dependency.version
+      "resolved": "https://registry.npmjs.org/fastify/-/fastify-4.28.1.tgz",  // → Dependency.registry
+                                    // key "node_modules/fastify" → Dependency.name = "fastify"
     },
+    "node_modules/artillery": {
+      "version": "2.0.27",          // → Dependency.version
+      "resolved": "https://registry.npmjs.org/artillery/-/artillery-2.0.27.tgz",  // → Dependency.registry
+      "dev": true                   // → Dependency.category = "dev"
+                                    // key "node_modules/artillery" → Dependency.name = "artillery"
+    }
   }
 }
 ```
+
+The path to `package-lock.json` maps to `Dependency.file`, and `Dependency.tool_name` is set by the plugin itself.
 
 ### Inline TODOs
 

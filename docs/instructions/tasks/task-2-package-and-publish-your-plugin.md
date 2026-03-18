@@ -2,13 +2,13 @@
 
 ## Task
 
-With a working [implementation](./task-1-write-a-npm-plugin.md) in place, your NPM plugin is ready for packaging and distribution. Your next task is to **create a Python wheel** and package this into an **OCI container image** to make the plugin portable and easy to deploy on any workstation.
+With a working [plugin implementation](./task-1-write-a-npm-plugin.md) in place, your plugin is ready for packaging and distribution. Your next task is to produce a **Python wheel** and an **OCI container image** from your plugin. To do so, refine the provided `Dockerfile` and GitHub Actions workflow `build.yml`, push your changes to your GitHub remote, and trigger the workflow to build and publish both artifacts.
 
 ## Hints
 
 ### Prerequisites: Docker Hub Repository and Credentials
 
-Before running the workflow, make sure you have [created a Docker Hub repository and configured your Docker credentials as GitHub Secrets and Variables](./../getting-started/getting-started.md#set-up-your-docker-depsight-npm-plugin-repository) as described in the Getting Started guide. Publishing the Python wheel to a GitHub release requires no credentials, but publishing the container image to DockerHub does.
+Before running the workflow, make sure you have [created a Docker Hub repository and configured your Docker credentials as GitHub Secrets and Variables](./../getting-started/getting-started.md#set-up-your-docker-depsight-npm-plugin-repository).
 
 ### Inline TODOs
 
@@ -19,8 +19,20 @@ The template repository already includes a `Dockerfile` and a GitHub Actions wor
 
 ### Build and Push Image
 
-Within your GitHub repository navigate to the **Actions** bar and click the **Manual Dispatch** entry on the left-side.
+Your plugin repository already integrates following GitHub action triggers:
 
-You can leave the default values, ensure to set the version of the plugin that is specified in the `pyproject.toml`. Enable the checkbox to push the image to Docker Hub and click the *Run Workflow* button.
+- **Workflow Dispatch**: A manual trigger for testing the build without publishing. Use this to verify your `Dockerfile` and workflow configuration before creating a release.
+- **Release Trigger**: Fires automatically when a GitHub release is published and pushes the image to Docker Hub and the wheel to the release assets.
+
+To test the build, navigate to the **Actions** tab in your GitHub repository, select the **Manual Dispatch** workflow, and click **Run workflow**. Set the version to match the one in `pyproject.toml` and leave the remaining inputs at their defaults.
 
 ![Run dispatch](../../images/run_dispatch.png)
+
+Once the build succeeds, create a GitHub release to publish both artifacts:
+
+- Set the `version` field in your `pyproject.toml` to `1.0.0`.
+- Navigate to your repository on GitHub and click **Releases** in the right sidebar.
+- Click **Draft a new release**.
+- Click **Choose a tag**, type `1.0.0`, and select **Create new tag on publish**.
+- Set the release title to `1.0.0`.
+- Click **Publish release**.
