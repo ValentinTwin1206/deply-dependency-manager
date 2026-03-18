@@ -61,6 +61,20 @@ Coming soon...
   pytest tests/ -v
   ```
 
+### Lint & Type Check
+
+- Run the Ruff linter:
+
+  ```bash
+  ruff check src/ tests/
+  ```
+
+- Run the Mypy type checker:
+
+  ```bash
+  mypy src/
+  ```
+
 ### Build Docs
 
 - Open a terminal inside the DevContainer
