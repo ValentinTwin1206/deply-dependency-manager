@@ -1,3 +1,13 @@
+.full-width {
+    width: 100%;
+}
+
+.md-typeset__scrollwrap:has(> .md-typeset__table > table.full-width),
+.md-typeset__table:has(> table.full-width) {
+    width: 100%;
+    display: block;
+}
+
 .tag-green {
     display: inline-block;
     padding: 0 0.5em;

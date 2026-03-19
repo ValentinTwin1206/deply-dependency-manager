@@ -36,6 +36,5 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "uv sync --all-groups",
-    "remoteUser": "vscode"
+    "postCreateCommand": "uv sync --all-groups"
 }

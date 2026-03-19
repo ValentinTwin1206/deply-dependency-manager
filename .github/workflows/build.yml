@@ -3,6 +3,11 @@ name: CI (DevContainer Build & Test)
 on:
   workflow_call:
     inputs:
+      python_version:
+        description: "Underlying python version (e.g. 3.12)"
+        required: false
+        default: "3.12"
+        type: string
       release_tag:
         description: "Git release tag to verify against pyproject.toml (e.g. 1.2.3)."
         required: false
@@ -20,7 +25,7 @@ on:
         type: string
 
 env:
-  PYTHON_VERSION: "3.12"
+  PYTHON_VERSION: ${{ inputs.python_version }}
   UV_VERSION: ${{ inputs.uv_version }}
 
 jobs:

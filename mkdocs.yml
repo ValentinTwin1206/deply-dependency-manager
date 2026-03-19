@@ -10,18 +10,33 @@ theme:
   features:
     - navigation.tabs
     - navigation.sections
+    - content.code.copy
 
 markdown_extensions:
   - admonition
   - attr_list
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+  - mermaid2
 
 extra_css:
   - stylesheets/extra.css
 
 nav:
-  - Development: development/index.md
+  - Development:
+      - Development Environment:
+          - DevContainers: development/environment/devcontainer.md
+          - uv: development/environment/uv.md
+          - Project Configuration: development/environment/project-configuration.md
+      - Architecture & Patterns: development/architecture-and-patterns.md
+      - CI/CD & Packaging: development/ci-cd-and-packaging.md
   - Instructions:
       - Getting Started:
           - Getting Started: instructions/getting-started/getting-started.md
