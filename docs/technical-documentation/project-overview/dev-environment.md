@@ -1,6 +1,6 @@
 # DevContainers
 
-## About
+## Overview
 
 A [DevContainer](https://containers.dev/) is a modern approach to virtualizing an entire development environment inside a Linux container. Instead of documenting setup steps in a README and hoping every contributor follows them correctly, a DevContainer defines and provisions the full environment as code automatically.
 

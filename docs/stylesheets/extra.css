@@ -8,6 +8,17 @@
     display: block;
 }
 
+.code-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.code-columns > * {
+    margin: 0;
+    min-width: 0;
+}
+
 .tag-green {
     display: inline-block;
     padding: 0 0.5em;
