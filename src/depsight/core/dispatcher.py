@@ -8,19 +8,18 @@ from rich.console import Console
 # own imports
 from depsight.commands.scan import scan_handler
 from depsight.core.plugins.factory import PluginFactory
-from depsight.utils.constants import SUPPORTED_PLUGINS
 from depsight.utils.logger import get_logger
 
 # Command registry: maps command names to handler callables
-COMMAND_HANDLERS: dict[str, Callable] = {
+COMMAND_REGISTRY: dict[str, Callable] = {
     "scan": scan_handler,
 }
 
 
-def run_handler(command: str, options: dict):
+def dispatch_command(command: str, options: dict):
     """Look up the command handler by name, resolve the plugin, and dispatch.
 
-    Uses the :data:`COMMAND_HANDLERS` registry to find the handler for
+    Uses the :data:`COMMAND_REGISTRY` registry to find the handler for
     *command* and :class:`~depsight.core.factory.PluginFactory` to instantiate
     the plugin from the plugin registry.
 
@@ -34,10 +33,10 @@ def run_handler(command: str, options: dict):
     console = Console()
 
     # Look up handler
-    handler = COMMAND_HANDLERS.get(command)
+    handler = COMMAND_REGISTRY.get(command)
     if handler is None:
         console.print(f"[bold red]Unknown command '{command}'. "
-                       f"Available: {', '.join(COMMAND_HANDLERS)}[/bold red]")
+                       f"Available: {', '.join(COMMAND_REGISTRY)}[/bold red]")
         return 1
 
     # Destructure options
@@ -52,7 +51,6 @@ def run_handler(command: str, options: dict):
 
     try:
         logger.info(f"Executing command '{command}' with plugin '{plugin_name}' on project '{project_dir}'")
-        logger.info(f"Supported plugins: {', '.join(SUPPORTED_PLUGINS)}")
         plugin = PluginFactory.create(plugin_name)
         logger.debug(f"Resolved plugin '{plugin_name}': {plugin}")
 

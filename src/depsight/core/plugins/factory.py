@@ -32,6 +32,7 @@ class PluginFactory:
         TypeError
             If the registered class does not conform to :class:`BasePlugin`.
         """
+        # Step 1: Lookup — resolve the plugin class from the registry
         plugin_cls = SUPPORTED_PLUGINS.get(plugin_name)
         if plugin_cls is None:
             raise ValueError(
@@ -39,8 +40,10 @@ class PluginFactory:
                 f"Available: {', '.join(SUPPORTED_PLUGINS)}"
             )
 
+        # Step 2: Instantiate — create the plugin object
         plugin = plugin_cls()
 
+        # Step 3: Validate — confirm the instance satisfies the BasePlugin protocol
         if not isinstance(plugin, BasePlugin):
             raise TypeError(
                 f"Plugin '{plugin_name}' ({plugin_cls.__qualname__}) "

@@ -3,7 +3,7 @@ import sys
 # third-party imports
 import rich_click as click
 
-from depsight.core.run import run_handler
+from depsight.core.dispatcher import dispatch_command
 from depsight.utils.constants import APP_BANNER, COLOR_DIM_ORANGE, COLOR_PEACH, SUPPORTED_PLUGINS
 
 # rich-click styling
@@ -83,7 +83,7 @@ def _register_plugin(plugin_name: str):
             "verbose": verbose,
             "as_csv": as_csv,
         }
-        sys.exit(run_handler("scan", options))
+        sys.exit(dispatch_command("scan", options))
 
 
 #
