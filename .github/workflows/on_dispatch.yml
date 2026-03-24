@@ -11,7 +11,10 @@ on:
         description: "Python version used for the build"
         required: false
         default: "3.12"
-        type: string
+        type: choice
+        options:
+          - "3.12"
+          - "3.13"
       uv_version:
         description: "uv version to install in the DevContainer (e.g. 0.10.9)"
         required: false

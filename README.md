@@ -4,33 +4,25 @@
 
 ### Installation
 
-Install Depsight from [PyPI](https://pypi.org/project/depsight/):
-
-#### pip
+#### Via pip
 
 ```bash
 pip install depsight
 ```
 
-#### uv
+#### Via uv
 
 ```bash
 uv tool install depsight
 ```
 
-#### Docker
+#### Via Docker
 
 ```bash
 docker pull <your-dockerhub-user>/depsight
 ```
 
-Run a scan by mounting your project directory into the container:
-
-```bash
-docker run --rm -v "$(pwd):/project" <your-dockerhub-user>/depsight uv scan --project-dir /project
-```
-
-### Getting Started
+s### Getting Started
 
 Read the docs.
 
@@ -139,8 +131,11 @@ Use this to trigger a build manually at any time without creating a release.
 - Navigate to your repository on GitHub and click the **Actions** tab
 - Select the **Manual Dispatch** workflow from the left sidebar
 - Click **Run workflow**
+- Enter the `depsight_version` (must match the `version` field in `pyproject.toml`, e.g. `0.1.0`)
+- Select the desired `python_version` (`3.12` or `3.13`, defaults to `3.12`)
+- Optionally set `uv_version` (defaults to `0.10.9`)
 - Optionally check **Upload wheel as artifact** to download the built `.whl` after the run
-- Set the desired `uv_version` (defaults to `0.10.9`) and click **Run workflow**
+- Click **Run workflow**
 - Once the run completes, the wheel is available under the run's **Artifacts** section (if enabled)
 
 ### Release

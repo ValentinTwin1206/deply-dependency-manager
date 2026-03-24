@@ -37,9 +37,9 @@ nav:
           - Project Overview: technical-documentation/development/project-overview.md
           - Development Environment: technical-documentation/development/dev-environment.md
           - CLI Architecture: technical-documentation/development/cli-architecture.md
-      - Packaging & Distribution: 
-          - Python Wheels: technical-documentation/ci-cd-and-packaging/packaging.md
-          - Containerization: technical-documentation/ci-cd-and-packaging/containerization.md
+      - Packaging & Deployment: 
+          - Packaging: technical-documentation/packaging_and_deployment/packaging.md
+          - Containerization: technical-documentation/packaging_and_deployment/containerization.md
   - Instructions:
       - Getting Started:
           - Getting Started: instructions/getting-started/getting-started.md
