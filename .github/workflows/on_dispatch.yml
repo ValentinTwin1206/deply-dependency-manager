@@ -3,17 +3,28 @@ name: Manual Dispatch
 on:
   workflow_dispatch:
     inputs:
-      upload_artifacts:
-        description: "Uploads wheel as a workflow artifact"
+      depsight_version:
+        description: "Depsight version (must match pyproject.toml, e.g. 1.0.0)"
+        required: true
+        type: string
+      python_version:
+        description: "Python version used for the build"
         required: false
-        default: false
-        type: boolean
+        default: "3.12"
+        type: choice
+        options:
+          - "3.12"
+          - "3.13"
       uv_version:
         description: "uv version to install in the DevContainer (e.g. 0.10.9)"
         required: false
         default: "0.10.9"
         type: string
-
+      upload_artifact:
+        description: "Upload the wheel as a workflow artifact"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   parse-version:
@@ -31,6 +42,8 @@ jobs:
     needs: parse-version
     uses: ./.github/workflows/build.yml
     with:
-      depsight_version: ${{ needs.parse-version.outputs.depsight_version }}
-      upload_artifacts: ${{ inputs.upload_artifacts }}
+      is_release: false
       uv_version: ${{ inputs.uv_version }}
+      python_version: ${{ inputs.python_version }}
+      depsight_version: ${{ inputs.depsight_version }}
+      upload_artifact: ${{ inputs.upload_artifact }}

@@ -1,11 +1,10 @@
-ARG PYTHON_VERSION
+ARG PYTHON_VERSION="3.12"
 FROM mcr.microsoft.com/devcontainers/python:${PYTHON_VERSION}
 
 # Install uv (fast Python package manager)
-ARG UV_VERSION
-RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh \
- && mv /root/.local/bin/uv /usr/local/bin/uv \
- && mv /root/.local/bin/uvx /usr/local/bin/uvx
+ARG UV_VERSION="0.10.9"
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh \
+    | UV_INSTALL_DIR=/usr/local/bin sh
 
 # Prevent Python stdout buffering
 ENV PYTHONUNBUFFERED=1
@@ -16,5 +15,3 @@ ENV DEPSIGHT_ENV=development
 
 # MkDocs dev server port
 EXPOSE 8000
-
-USER vscode

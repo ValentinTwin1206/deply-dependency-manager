@@ -33,7 +33,10 @@ jobs:
     needs: verify-tag
     uses: ./.github/workflows/build.yml
     with:
-      depsight_version: ${{ needs.verify-tag.outputs.depsight_version }}
       is_release: true
-      upload_artifacts: false
       uv_version: "0.10.9"
+      python_version: "3.12"
+      depsight_version: ${{ github.event.release.tag_name }}
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

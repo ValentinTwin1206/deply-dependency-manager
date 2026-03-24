@@ -4,24 +4,27 @@
 
 ### Installation
 
-Go to the [Releases](../../releases/latest) page of the Depsigt GitHub repository and download the `.whl` file from the latest release
-
-
-#### Pip
+#### Via pip
 
 ```bash
-pip install depsight-<version>-py3-none-any.whl
+pip install depsight
 ```
 
-#### uv
+#### Via uv
 
 ```bash
-uv tool install depsight-<version>-py3-none-any.whl
+uv tool install depsight
 ```
 
-### Getting Started
+#### Via Docker
 
-Coming soon...
+```bash
+docker pull <your-dockerhub-user>/depsight
+```
+
+s### Getting Started
+
+Read the docs.
 
 ## Development
 
@@ -46,6 +49,27 @@ Coming soon...
 - Once ready, you'll have a fully configured development environment with all dependencies installed
 - Open a terminal inside the DevContainer and run `depsight --help`
 
+### Build Container Image
+
+- Open a terminal inside the DevContainer (Docker-in-Docker is available)
+- Build the image:
+
+  ```bash
+  docker build -t depsight .
+  ```
+
+- Optionally override the Python or uv version via build args:
+
+  ```bash
+  docker build -t depsight --build-arg PYTHON_VERSION=3.13 --build-arg UV_VERSION=0.10.9 .
+  ```
+
+- Verify the image works:
+
+  ```bash
+  docker run --rm depsight --help
+  ```
+
 ### Run Tests
 
 - Open a terminal inside the DevContainer
@@ -61,20 +85,60 @@ Coming soon...
   pytest tests/ -v
   ```
 
-### Build With GitHub
+### Lint & Type Check
 
-#### Workflow Dispatch
+- Run the Ruff linter:
+
+  ```bash
+  ruff check src/ tests/
+  ```
+
+- Run the Mypy type checker:
+
+  ```bash
+  mypy src/
+  ```
+
+### Build Docs
+
+- Open a terminal inside the DevContainer
+- Activate the virtual environment:
+
+  ```bash
+  source .venv/bin/activate
+  ```
+
+- Serve the documentation locally with live reload:
+
+  ```bash
+  mkdocs serve
+  ```
+
+  The site will be available at `http://127.0.0.1:8000`.
+
+- Alternatively, build the static site as a `site/` directory:
+
+  ```bash
+  mkdocs build
+  ```
+
+## Build
+
+### Pre-release
 
 Use this to trigger a build manually at any time without creating a release.
 
 - Navigate to your repository on GitHub and click the **Actions** tab
 - Select the **Manual Dispatch** workflow from the left sidebar
 - Click **Run workflow**
+- Enter the `depsight_version` (must match the `version` field in `pyproject.toml`, e.g. `0.1.0`)
+- Select the desired `python_version` (`3.12` or `3.13`, defaults to `3.12`)
+- Optionally set `uv_version` (defaults to `0.10.9`)
 - Optionally check **Upload wheel as artifact** to download the built `.whl` after the run
-- Set the desired `uv_version` (defaults to `0.10.9`) and click **Run workflow**
+- Click **Run workflow**
 - Once the run completes, the wheel is available under the run's **Artifacts** section (if enabled)
 
-#### Release
+### Release
 
 Use this to publish an official versioned build. The wheel is automatically attached to the GitHub Release.
 
