@@ -3,6 +3,7 @@ import sys
 # third-party imports
 import rich_click as click
 
+from depsight import __version__
 from depsight.core.dispatcher import dispatch_command
 from depsight.utils.constants import APP_BANNER, COLOR_DIM_ORANGE, COLOR_PEACH, SUPPORTED_PLUGINS
 
