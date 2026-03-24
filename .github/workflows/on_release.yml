@@ -11,6 +11,10 @@ jobs:
   call-build:
     uses: ./.github/workflows/build.yml
     with:
-      release_tag: ${{ github.event.release.tag_name }}
-      upload_artifacts: false
+      is_release: true
       uv_version: "0.10.9"
+      python_version: "3.12"
+      depsight_version: ${{ github.event.release.tag_name }}
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

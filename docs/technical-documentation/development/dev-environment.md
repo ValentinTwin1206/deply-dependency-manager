@@ -4,7 +4,10 @@
 
 It is common practice to use virtual environment tools such as `venv`, `pipenv`, or `virtualenv` when running Python projects locally. They isolate project packages from the system Python and from other projects, keeping dependency versions consistent and preventing conflicts. For many projects that level of isolation is sufficient.
 
-Depsight goes further by integrating [DevContainers](https://containers.dev/), a modern approach to virtualizing an entire development environment inside a Linux container. Instead of documenting setup steps in a README and hoping every contributor follows them correctly, a DevContainer defines and provisions the full environment as code automatically.
+Depsight goes further by integrating [DevContainers](https://containers.dev/), a modern approach to virtualizing an entire development environment inside a Linux container. Instead of documenting setup steps in a README and hoping every contributor follows them correctly, a DevContainer defines and provisions the full environment as code automatically. Because Depsight's CI pipeline also builds a production Docker image, the DevContainer uses Docker outside of Docker (DooD) so developers can build and test the container image locally without leaving the DevContainer.
+
+!!! info "Docker outside of Docker (DooD)"
+    DooD mounts the host's Docker socket into the container rather than running a separate Docker daemon inside it, which avoids the complexity and privilege requirements of Docker-in-Docker.
 
 ### Beyond Traditional Virtualization Techniques
 
@@ -30,17 +33,17 @@ Per-IDE configuration lives under the `customizations` key in `devcontainer.json
 ```json
 {
     "customizations": {
+        "jetbrains": {
+            "plugins": [
+                "com.intellij.python",     // Python language support and debugger
+                "com.jetbrains.plugins.ini" // TOML / INI file support for pyproject.toml
+            ]
+        },
         "vscode": {
             "extensions": [
                 "ms-python.python",        // Python language support, IntelliSense, and debugging
                 "charliermarsh.ruff",      // Fast linter and formatter — enforces code style on save
                 "eamodio.gitlens"          // Inline Git blame, history, and branch comparisons
-            ]
-        },
-        "jetbrains": {
-            "plugins": [
-                "com.intellij.python",     // Python language support and debugger
-                "com.jetbrains.plugins.ini" // TOML / INI file support for pyproject.toml
             ]
         }
     }
@@ -79,7 +82,7 @@ For complex post-creation routines such as configuring git hooks, installing add
 
 The `devcontainer.json` is the central configuration file. it instructs the IDE how to build the container image, which extensions to install, which ports to forward, and which environment variables and lifecycle commands to apply.
 
-The `build` section points to the `Dockerfile` and passes build arguments. `${localEnv:PYTHON_VERSION:3.12}` reads `PYTHON_VERSION` from the host machine's environment — useful when a developer wants to override the version without editing the file. The value after the colon is the fallback default when the variable is not set. `containerEnv` injects environment variables into the running container, making them available to every process. `forwardPorts` maps container ports to the host so they can be accessed from a browser or tool on the developer's machine. `workspaceFolder` sets the path inside the container where the project is mounted; when omitted, the Dev Containers extension defaults to `/workspaces/<repo-name>`. The `postCreateCommand` runs with this folder as the working directory immediately after the project has been mounted:
+The `build` section points to the `Dockerfile` and passes build arguments. `${localEnv:PYTHON_VERSION:3.12}` reads `PYTHON_VERSION` from the host machine's environment — useful when a developer wants to override the version without editing the file. The value after the colon is the fallback default when the variable is not set. The `features` section adds pre-packaged capabilities from the [DevContainer Features registry](https://containers.dev/features); here `docker-outside-of-docker` installs the Docker CLI inside the container and mounts the host's Docker socket (`/var/run/docker.sock`), so developers can build and test the Depsight production image without leaving the DevContainer while reusing the host daemon. `containerEnv` injects environment variables into the running container, making them available to every process. `forwardPorts` maps container ports to the host so they can be accessed from a browser or tool on the developer's machine. `workspaceFolder` sets the path inside the container where the project is mounted; when omitted, the Dev Containers extension defaults to `/workspaces/<repo-name>`. The `postCreateCommand` runs with this folder as the working directory immediately after the project has been mounted:
 
 ```json
 {
@@ -90,6 +93,18 @@ The `build` section points to the `Dockerfile` and passes build arguments. `${lo
         "args": {
             "PYTHON_VERSION": "${localEnv:PYTHON_VERSION:3.12}",
             "UV_VERSION": "${localEnv:UV_VERSION:0.10.9}"
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+            "moby": false
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python"
+            }
         }
     },
     "containerEnv": {

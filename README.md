@@ -4,24 +4,35 @@
 
 ### Installation
 
-Go to the [Releases](../../releases/latest) page of the Depsigt GitHub repository and download the `.whl` file from the latest release
-
+Install Depsight from [PyPI](https://pypi.org/project/depsight/):
 
 #### pip
 
 ```bash
-pip install depsight-<version>-py3-none-any.whl
+pip install depsight
 ```
 
 #### uv
 
 ```bash
-uv tool install depsight-<version>-py3-none-any.whl
+uv tool install depsight
+```
+
+#### Docker
+
+```bash
+docker pull <your-dockerhub-user>/depsight
+```
+
+Run a scan by mounting your project directory into the container:
+
+```bash
+docker run --rm -v "$(pwd):/project" <your-dockerhub-user>/depsight uv scan --project-dir /project
 ```
 
 ### Getting Started
 
-Coming soon...
+Read the docs.
 
 ## Development
 
@@ -45,6 +56,27 @@ Coming soon...
 - Wait for the containers to build and start
 - Once ready, you'll have a fully configured development environment with all dependencies installed
 - Open a terminal inside the DevContainer and run `depsight --help`
+
+### Build Container Image
+
+- Open a terminal inside the DevContainer (Docker-in-Docker is available)
+- Build the image:
+
+  ```bash
+  docker build -t depsight .
+  ```
+
+- Optionally override the Python or uv version via build args:
+
+  ```bash
+  docker build -t depsight --build-arg PYTHON_VERSION=3.13 --build-arg UV_VERSION=0.10.9 .
+  ```
+
+- Verify the image works:
+
+  ```bash
+  docker run --rm depsight --help
+  ```
 
 ### Run Tests
 

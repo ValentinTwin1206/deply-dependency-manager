@@ -238,6 +238,20 @@ import importlib.metadata
 
 
 def discover_plugins(app_name: str = "depsight") -> dict:
+    """Build the full plugin registry from entry points.
+
+    All plugins (built-in and third-party) are discovered via the
+    `<app_name>.plugins` entry-point group declared in `pyproject.toml`.
+
+    Parameters
+    ----------
+    app_name - Application name used to look up the entry-point group (e.g. `"depsight"`).
+
+    Returns
+    -------
+    dict[str, type]
+        A mapping of plugin name → plugin class.
+    """
     registry: dict[str, type] = {}
     entry_points = importlib.metadata.entry_points(group=f"{app_name}.plugins")
     for ep in entry_points:
