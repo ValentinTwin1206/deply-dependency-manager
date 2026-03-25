@@ -23,7 +23,6 @@ jobs:
         run: uv python install 3.12
 
       - name: Install docs dependencies
-        # uv pip install is much faster than standard pip
         run: uv pip install mkdocs>=1.6 mkdocs-material>=9.5 mkdocs-mermaid2-plugin>=1.1
 
       - name: Deploy to GitHub Pages
