@@ -5,7 +5,6 @@
         "dockerfile": "Dockerfile",
         "args": {
             "PYTHON_VERSION": "${localEnv:PYTHON_VERSION:3.12}",
-            // Keep this default in sync with versions.env
             "UV_VERSION": "${localEnv:UV_VERSION:0.11.1}"
         }
     },

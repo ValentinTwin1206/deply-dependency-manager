@@ -14,7 +14,7 @@ Depsight embraces this modern stack. Metadata, dependencies, build system config
 
 In 1998, `distutils` introduced `setup.py`, an imperative Python script that served as the build entry point for a project. Package metadata such as the `name`, `version`, and `description` were declared as function arguments inside executable code. A `requires` keyword existed for declaring dependencies, but it was purely informational metadata. No tool ever used it to download or install packages automatically; developers had to find, download, and install each dependency by hand.
 
-=== "`setup.py` (distutils)"
+=== "`setup.py`"
     ```python
     from distutils.core import setup
 
@@ -30,7 +30,7 @@ In 1998, `distutils` introduced `setup.py`, an imperative Python script that ser
 
 Around 2004, `setuptools` extended `setup.py` with automatic package discovery and replaced the inert `requires` with `install_requires`, which actually caused dependencies to be resolved and installed. Metadata, however, remained executable Python code. Consequently, any tool had to run the file just to read the package name or version, which was both a security risk and a barrier to static tooling.
 
-=== "`setup.py` (setuptools)"
+=== "`setup.py`"
     ```python
     from setuptools import setup, find_packages
 
@@ -135,48 +135,23 @@ Projects therefore had to keep `setup.cfg`, `setup.py`, `requirements.txt`, and 
 
 ### Python Project Configuration Nowadays
 
+#### Single Source of True
+
 In 2016 the fragmentation of project configuration across several files ended, since [PEP 517](https://peps.python.org/pep-0517/) and [PEP 518](https://peps.python.org/pep-0518/) introduced `pyproject.toml` as a standard home for build system metadata. [PEP 621](https://peps.python.org/pep-0621/) completed the picture in 2020 by standardising the `[project]` table for package metadata.
 
-The `[project]` table consolidates everything that used to live across `setup.py` and `setup.cfg`, declaring the package name, version, description, and runtime dependencies in one place. The `[build-system]` table tells build frontends like `uv build` or `pip wheel` which backend to delegate to, and the `[tool.*]` tables configure linters, formatters, and test runners without the need for separate configuration files spread across the project. Dependency groups further tighten the setup by isolating development and documentation tools from runtime dependencies, replacing scattered `requirements-dev.txt` files with a structured, first-class concept directly within `pyproject.toml`.
+The `[project]` table consolidates everything that used to live across `setup.py` and `setup.cfg`. It declares the package name, version, description, and a `dependencies` list that serves as the canonical declaration of runtime requirements, replacing `requirements.txt`. The `[build-system]` table specifies the backend responsible for assembling the project into a distributable artifact. The `[dependency-groups]` table takes care of development and documentation tooling separately from runtime requirements, replacing scattered `requirements-dev.txt` files with a structured, first-class concept inside the same file. Finally, `[tool.*]` sections configure linters, formatters, and test runners directly in `pyproject.toml`, removing the need for separate files such as `.flake8` or `pytest.ini`.
 
 === "`pyproject.toml`"
     ```toml
     [project]
-    name = "depsight"
-    version = "1.0.0"
-    description = "A modular dependency analysis framework"
+    name = "my-package"
+    version = "5.0.0"
+    description = "A sample package"
     readme = "README.md"
-    license = "MIT"
     requires-python = ">=3.12"
-    authors = [
-        { name = "Depsight Contributors" },
-    ]
-    classifiers = [
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Topic :: Software Development :: Build Tools",
-    ]
     dependencies = [
-        "click>=8.1.7",
-        "rich>=13.7.0",
-        "rich-click>=1.7.0",
-        "textual>=1.0.0",
+        "lxml>=3.0",
     ]
-
-    [project.scripts]
-    depsight = "depsight.cli:main"
-
-    [project.urls]
-    Homepage = "https://valentintwin1206.github.io/depsight-dependency-manager/"
-    Repository = "https://github.com/ValentinTwin1206/depsight-dependency-manager"
-    Issues = "https://github.com/ValentinTwin1206/depsight-dependency-manager/issues"
-
-    [project.entry-points."depsight.plugins"]
-    uv = "depsight.core.plugins.uv.uv:UVPlugin"
-    vsce = "depsight.core.plugins.vsce.vsce:VSCEPlugin"
 
     [build-system]
     requires = ["uv_build>=0.11.1,<0.12"]
@@ -184,15 +159,12 @@ The `[project]` table consolidates everything that used to live across `setup.py
 
     [dependency-groups]
     dev = [
-        "build>=1.4.2",
-        "mypy>=1.10",
-        "pytest>=8.0",
-        "ruff>=0.4",
+        "pytest>=9.0.2",
+        "ruff>=0.15.8",
     ]
     docs = [
         "mkdocs>=1.6",
         "mkdocs-material>=9.5",
-        "mkdocs-mermaid2-plugin>=1.1",
     ]
 
     # replaces: pytest.ini / tox.ini
@@ -201,19 +173,84 @@ The `[project]` table consolidates everything that used to live across `setup.py
     pythonpath = ["src"]
     ```
 
+#### Project Orchestration
+
+The [standardization](#single-source-of-true) of `pyproject.toml` gave Python tooling a stable project configuration to build unified workflows on top of. Tools such as [Poetry](https://python-poetry.org/) (`poetry new`, `poetry add`, `poetry build`, `poetry publish`) and [uv](https://docs.astral.sh/uv/) (`uv init`, `uv add`, `uv sync`, `uv build`, `uv publish`) now cover the full lifecycle of a Python project from initialization through publishing within a single tool. This pattern of language-native project orchestration is well established across ecosystems — `npm` in JavaScript, `cargo` in Rust, and `go mod` in Go follow the same principle. 
+
+Depsight leverages uv's capabilities across its full lifecycle, covering [dependency management](#dependency-management), [building](#build-management), and [publishing](../integration_and_deployment/distribution.md#package-deployment), each of which is described in the sections below. The init phase, which bootstraps the project structure, is described here. Depsight's own project was initialized with a single command:
+
+```bash
+uv init my-package --build-backend "uv"
+```
+
+This generates a ready-to-use project scaffold with a `pyproject.toml`, a `src/` layout, a `.python-version` file, and an initial Git repository:
+
+```
+my-package/
+├── .git/
+├── .gitignore
+├── .python-version
+├── pyproject.toml
+├── README.md
+└── src/
+    └── my_package/
+        └── __init__.py
+```
+
+Dependencies can then be added with `uv add`, which updates `pyproject.toml`, pins versions in a dedicated [lockfile](#lockfile), and installs the packages in one step:
+
+```bash
+uv add lxml
+uv add --group dev ruff
+```
+
+The first command adds a runtime dependency under `[project].dependencies`, the second a development tool under `[dependency-groups].dev`. The resulting `pyproject.toml` reflects both additions:
+
+```toml
+[project]
+name = "my-package"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml>=6.0.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.8"
+]
+```
+
 ---
 
-## Development Tooling Stack
+## Development Tools
 
 ### Build Management
 
-Build management tools turn Python projects into distributable artifacts such as source distributions and wheels. In modern Python packaging, they separate the user-facing build command from the backend that actually assembles package metadata and archive contents. Popular tools in this space include `setuptools`, `hatchling`, `poetry-core`, `flit_core`, and `uv_build`.
+Build management is the process of packaging Python source code into [distributable artifacts](./../integration_and_deployment/distribution.md#python-wheels). [PEP 517](https://peps.python.org/pep-0517/) defined a standard interface between build frontends and build backends. A build frontend is the tool the developer runs (e.g. `uv build`, `python -m build`) and orchestrates the build process. A build backend is the library that does the actual work of compiling metadata and assembling the wheel; it is declared in the `[build-system]` table in `pyproject.toml` and invoked by the frontend.
 
-Depsight uses [**uv**](https://docs.astral.sh/uv/) as its build tooling; see the dedicated [Build System](../integration_and_deployment/packaging.md#uv) section for the concrete configuration and build workflow.
+Depsight uses `uv_build` as its build backend, which has been a stable, PEP 517-compliant backend since uv `v0.7.19`. `uv_build` is shipped with `uv` but is not user-facing; `uv build` remains the command for normal use. The backend is declared in `pyproject.toml`:
+
+```toml
+[build-system]
+requires = ["uv_build>=0.11.1,<0.12"]
+build-backend = "uv_build"
+```
+
+#### Alternatives
+
+The most widely adopted alternative is [Setuptools](https://pypi.org/project/setuptools/), which offers the broadest ecosystem compatibility and is a sensible default when tooling interoperability matters most. [Hatchling](https://pypi.org/project/hatchling/) is a modern option that reads all metadata directly from `pyproject.toml`, enforces standards compliance more strictly, and produces reproducible builds by default.
 
 ### Dependency Management
 
-Dependency management is the process of declaring which third-party packages a project needs, resolving compatible versions, and installing them reproducibly across machines. In Python, this has historically been fragmented across tools such as `setup.py`, `requirements.txt`, `pip`, Poetry, and pip-tools, which is why modern workflows increasingly converge on `pyproject.toml` plus a lockfile. A good Python dependency manager therefore needs to handle both packaging metadata and environment reproducibility.
+Dependency management is the process of declaring which third-party packages a project needs, resolving compatible versions, and installing them reproducibly across machines. In Python, this has historically been fragmented across tools such as `setup.py`, `requirements.txt`, `pip`, SPoetry, and pip-tools, which is why modern workflows increasingly converge on `pyproject.toml` plus a lockfile. A good Python dependency manager therefore needs to handle both packaging metadata and environment reproducibility.
 
 Depsight uses [**uv**](https://docs.astral.sh/uv/) as its package manager. It is implemented in Rust and released by the team behind [Ruff](#linter-and-formatter). uv resolves and installs packages significantly faster than `pip` or any other Python dependency manager, using parallel downloads and a shared global cache. 
 

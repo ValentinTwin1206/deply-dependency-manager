@@ -8,17 +8,14 @@ on:
         required: true
         type: string
       python_version:
-        description: "Python version used for the build"
-        required: false
-        default: "3.12"
-        type: choice
-        options:
-          - "3.12"
-          - "3.13"
-      uv_version:
-        description: "uv version override (leave empty to use versions.env)"
+        description: "Python version override (leave empty to use .python-version)"
         required: false
         default: ""
+        type: string
+      uv_version:
+        description: "uv version (e.g. 0.11.1)"
+        required: false
+        default: "0.11.1"
         type: string
       upload_artifact:
         description: "Upload the wheel as a workflow artifact"
@@ -31,22 +28,19 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       depsight_version: ${{ steps.versions.outputs.version }}
-      uv_version: ${{ steps.versions.outputs.uv_version }}
     steps:
       - uses: actions/checkout@v4
       - id: versions
         run: |
           version=$(grep '^version' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          source versions.env
-          echo "uv_version=$UV_VERSION" >> "$GITHUB_OUTPUT"
 
   call-build:
     needs: parse-version
     uses: ./.github/workflows/build.yml
     with:
       is_release: false
-      uv_version: ${{ inputs.uv_version || needs.parse-version.outputs.uv_version }}
+      uv_version: ${{ inputs.uv_version }}
       python_version: ${{ inputs.python_version }}
       depsight_version: ${{ inputs.depsight_version }}
       upload_artifact: ${{ inputs.upload_artifact }}

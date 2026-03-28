@@ -54,6 +54,7 @@ A [multi-stage build](https://docs.docker.com/build/building/multi-stage/) split
 
 Depsight uses two stages. The **builder** stage starts from `python:3.12-slim`, installs `uv` and all project dependencies, and then installs `depsight` itself. The **final** stage starts from a fresh `python:3.12-slim` image and copies only the runtime artifacts (the `uv` binaries, the virtual environment, and the plugin source) from the builder. This keeps build-time dependencies such as `curl` and the full source tree out of the shipped image.
 
+<div style="zoom: 1.6;">
 ```mermaid
 flowchart LR
   subgraph Builder["Builder Stage"]
@@ -74,6 +75,7 @@ flowchart LR
   F1 --> F2 --> F3 --> F4
   B4 -. runtime artifacts .-> F2
 ```
+</div>
 
 ##### Builder Stage
 

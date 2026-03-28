@@ -29,7 +29,7 @@
   docker build -t depsight .
   ```
 
-- Optionally override the Python or uv version via build args — both are optional and fall back to the defaults defined in `versions.env`:
+- Optionally override the Python or uv version via build args — both are optional and fall back to the defaults in the Dockerfile:
 
   ```bash
   docker build -t depsight --build-arg PYTHON_VERSION=3.13 --build-arg UV_VERSION=0.11.1 .
@@ -103,8 +103,8 @@ Use this to trigger a build manually at any time without creating a release.
 - Select the **Manual Dispatch** workflow from the left sidebar
 - Click **Run workflow**
 - Enter the `depsight_version` (must match the `version` field in `pyproject.toml`, e.g. `1.0.0`)
-- Select the desired `python_version` (`3.12` or `3.13`, defaults to `3.12`)
-- Optionally set `uv_version` to override the value from `versions.env` for this run only
+- Optionally set `python_version` to override the value from `.python-version` for this run only
+- Optionally set `uv_version` (defaults to `0.11.1`)
 - Optionally check **Upload wheel as artifact** to download the built `.whl` after the run
 - Click **Run workflow**
 - Once the run completes, the wheel is available under the run's **Artifacts** section (if enabled)
@@ -113,7 +113,14 @@ Use this to trigger a build manually at any time without creating a release.
 
 Use this to publish an official versioned build. The wheel is automatically attached to the GitHub Release.
 
-- Update `versions.env` if the Python or uv version has changed since the last release
+- To update `uv` to a newer version, set the dedicated version in following files:
+    - `.devcontainer/devcontainer.json`
+    - `.devcontainer/Dockerfile`
+    - `.github/workflows/on_dispatch.yml`
+    - `.github/workflows/on_pullrequest.yml`
+    - `.github/workflows/on_release.yml`
+    - `Dockerfile`
+- To update `python` to a newer version, set the dedicated version in `.python-version`
 - Bump the `version` field in `pyproject.toml` to the desired version (e.g. `1.2.3`)
 - Commit and push the changes to `main`
 - Navigate to your repository on GitHub and click **Releases** → **Draft a new release**

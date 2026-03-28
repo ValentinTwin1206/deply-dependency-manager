@@ -1,48 +1,63 @@
 # Depsight — Copilot Instructions
 
+## Project Intent
+
+**Depsight** is an extensible CLI tool designed for **educational and training purposes**. It serves as a reference implementation for scanning and visualizing project dependencies across ecosystems (Python/uv, VS Code/vsce).
+
 ## Stack
 
-- **Python** `>=3.12` — use `from __future__ import annotations` in every module
-- **Build**: `uv_build` (not setuptools); build with `uv build`
-- **Lint**: `ruff check src/ tests/`
-- **Types**: `mypy src/`
-- **Tests**: `pytest tests/ -v`
-- **CLI**: `rich-click` (Click wrapper); **TUI**: Textual; **output**: Rich
+- **Python**: `>=3.12` — Use `from __future__ import annotations` in every module.
+- **Build System**: `hatchling` (via `uv build`); strictly avoid `setuptools` or `setup.py`.
+- **Lint/Format**: `ruff check src/ tests/`
+- **Type Checking**: `mypy src/`
+- **Testing**: `pytest tests/ -v` (Use fixtures and `pathlib.Path` for all file-based mocks).
+- **CLI**: `rich-click` (Click wrapper).
+- **TUI**: `Textual` (Reactive UI).
+- **Formatting**: `Rich` (Console output).
 
 ## Architecture
 
-```
-depsight.cli          — entry point; registers plugin commands at import time
-depsight.core.dispatcher  — routes CLI commands → handlers, instantiates plugins via PluginFactory
-depsight.core.plugins — BasePlugin ABC, Dependency dataclass, PluginFactory
-  └─ uv/             — parses uv.lock (TOML)
-  └─ vsce/           — parses devcontainer.json extensions
-depsight.commands.scan — scan_handler: calls plugin.collect(), launches Textual TUI
-depsight.utils        — constants, logging, plugin/command auto-discovery
-```
+- **depsight.cli**: Entry point; handles command registration and initial console setup.
+- **depsight.core.dispatcher**: Routes CLI commands to handlers; manages the `PluginFactory`.
+- **depsight.core.plugins**: Contains `BasePlugin` ABC, `Dependency` dataclass, and `PluginFactory`.
+    - **uv/**: Parser for `uv.lock` (TOML).
+    - **vsce/**: Parser for `devcontainer.json` extensions.
+- **depsight.commands.scan**: The `scan_handler`. Triggers `plugin.collect()` and launches the Textual TUI.
+- **depsight.utils**: Shared constants, logging configuration, and auto-discovery logic.
 
 ## Writing a Plugin
 
-Every plugin lives at `src/depsight/core/plugins/<name>/<name>.py`:
+All plugins must reside in `src/depsight/core/plugins/<name>/<name>.py`.
 
-1. Subclass `BasePlugin` and implement:
-   - `@property name(self) -> str` — canonical key (e.g. `"uv"`)
-   - `collect(self, path: str | Path) -> None` — populate `self.dependencies: list[Dependency]`
-2. Register in `pyproject.toml` under `[project.entry-points."depsight.plugins"]`
-
-`Dependency` is a `@dataclass(slots=True)` — see `src/depsight/core/plugins/dependency.py`.
+1. **Subclass `BasePlugin`**:
+   - Implement `@property name(self) -> str` (e.g., `"uv"`).
+   - Implement `collect(self, path: Path) -> None`: Populates `self.dependencies: list[Dependency]`.
+   - **Constraint**: `collect()` must remain **synchronous** to support standard CLI usage.
+2. **Data Model**: Use the `Dependency` dataclass (`@dataclass(slots=True)`).
+3. **Registration**: Ensure the plugin is registered in `pyproject.toml` under `[project.entry-points."depsight.plugins"]`.
 
 ## Code Conventions
 
-- `from __future__ import annotations` at the top of every module
-- Import order: stdlib → third-party → `# own imports`
-- `pathlib.Path` over string paths
-- `type X = ...` alias syntax (Python 3.12+)
-- Logging: `logging.getLogger(__name__)` per module
-- Textual CSS in `.tcss` files alongside the widget module
-- Docstrings: NumPy style with `Parameters` / `Returns` / `Raises` and dash separators
+- **Typing**: Use `type Alias = ...` syntax for type aliases (PEP 695).
+- **Imports**: 
+    1. Standard Library
+    2. Third-party (Rich, Click, Textual)
+    3. `# local imports` (use absolute paths: `from depsight.core...`)
+- **Paths**: Use `pathlib.Path` exclusively. No string concatenation for file paths.
+- **Logging**: Use `logger = logging.getLogger(__name__)`. Log significant events during discovery and collection.
+- **TUI Logic**: All Textual widgets should stay in the TUI layer. Event handlers use `async def`.
+- **Docstrings**: NumPy style. Include `Parameters`, `Returns`, and `Raises` sections.
+
+## Anti-Patterns
+
+- **No `os.path`**: Use `pathlib`.
+- **No `print()`**: Use `rich.console` for output or `logging` for status.
+- **No Globals**: Keep state within classes or passed via dependency injection.
+- **No Logic in `__init__.py`**: Keep these files restricted to clean namespace exports.
 
 ## Release Checklist
 
-Before tagging a release, update `versions.env` if the Python or uv version has changed.
-See `README.md` → **Build → Release** for the full workflow.
+1. Update `version` in `pyproject.toml`.
+2. Update `uv` version in `.github/workflows/` and `.devcontainer/devcontainer.json`.
+3. Ensure `ruff` and `mypy` pass without warnings.
+4. Follow the full workflow in `CONTRIBUTING.md`.
