@@ -141,20 +141,79 @@ In 2016 the fragmentation of project configuration across several files ended, s
 
 The `[project]` table consolidates everything that used to live across `setup.py` and `setup.cfg`. It declares the package name, version, description, and a `dependencies` list that serves as the canonical declaration of runtime requirements, replacing `requirements.txt`. The `[build-system]` table specifies the backend responsible for assembling the project into a distributable artifact. The `[dependency-groups]` table takes care of development and documentation tooling separately from runtime requirements, replacing scattered `requirements-dev.txt` files with a structured, first-class concept inside the same file. Finally, `[tool.*]` sections configure linters, formatters, and test runners directly in `pyproject.toml`, removing the need for separate files such as `.flake8` or `pytest.ini`.
 
-=== "`pyproject.toml`"
+#### Project Orchestration
+
+With `pyproject.toml` as a stable foundation, the Python ecosystem now has the same capability as other languages (e.g. `npm`, `cargo`, `go mod`) to orchestrate the entire project lifecycle around a single central configuration file.
+
+Tools such as [Poetry](https://python-poetry.org/) and [uv](https://docs.astral.sh/uv/) expose a unified interface covering project initialization (`uv init` / `poetry new`), dependency management (`uv add` / `poetry add`), environment synchronization (`uv sync`), building (`uv build` / `poetry build`), and publishing (`uv publish` / `poetry publish`). Both tools scaffold a PEP 621-compliant `pyproject.toml` from a single command and support various flags to customise the output layout, Python version, or build backend:
+
+=== "`uv`"
+
+    ```bash
+    uv init my-package --build-backend "uv"
+    ```
+
+=== "`poetry`"
+
+    ```bash
+    poetry new my-package
+    ```
+
+Both tools provide an `add` command to register packages as part of the project, either as runtime dependencies or scoped to a named group via `--group <name>`:
+
+=== "`uv`"
+
+    ```bash
+    cd my-package
+    uv add lxml
+    uv add --group dev ruff pytest
+    uv add --group docs mkdocs mkdocs-material
+    ```
+
+=== "`poetry`"
+
+    ```bash
+    cd my-package
+    poetry add lxml
+    poetry add --group dev ruff pytest
+    poetry add --group docs mkdocs mkdocs-material
+    ```
+
+Both tools update `pyproject.toml` and their respective lockfile on every `add` call. With `uv`, each invocation also immediately installs the package into a `.venv` in the project root, keeping the virtual environment continuously in sync. The resulting `pyproject.toml` only differs in the `[build-system]` table:
+
+=== "`uv`"
+
+    ```
+    my-package/
+    ├── .git/
+    ├── .gitignore
+    ├── .python-version
+    ├── .venv
+    ├── README.md
+    ├── main.py
+    ├── pyproject.toml
+    └── uv.lock
+    ```
+
     ```toml
     [project]
     name = "my-package"
-    version = "5.0.0"
-    description = "A sample package"
+    version = "0.1.0"
+    description = "Add your description here"
     readme = "README.md"
+    authors = [
+        { name = "{GIT_USER}", email = "{GIT_MAIL}" }
+    ]
     requires-python = ">=3.12"
     dependencies = [
-        "lxml>=3.0",
+        "lxml>=6.0.2",
     ]
 
+    [project.scripts]
+    hello-world = "hello_world:main"
+
     [build-system]
-    requires = ["uv_build>=0.11.1,<0.12"]
+    requires = ["uv_build>=0.11.1,<0.12.0"]
     build-backend = "uv_build"
 
     [dependency-groups]
@@ -163,70 +222,56 @@ The `[project]` table consolidates everything that used to live across `setup.py
         "ruff>=0.15.8",
     ]
     docs = [
-        "mkdocs>=1.6",
-        "mkdocs-material>=9.5",
+        "mkdocs>=1.6.1",
+        "mkdocs-material>=9.7.6",
     ]
-
-    # replaces: pytest.ini / tox.ini
-    [tool.pytest.ini_options]
-    testpaths = ["tests"]
-    pythonpath = ["src"]
     ```
 
-#### Project Orchestration
+=== "`poetry`"
 
-The [standardization](#single-source-of-true) of `pyproject.toml` gave Python tooling a stable project configuration to build unified workflows on top of. Tools such as [Poetry](https://python-poetry.org/) (`poetry new`, `poetry add`, `poetry build`, `poetry publish`) and [uv](https://docs.astral.sh/uv/) (`uv init`, `uv add`, `uv sync`, `uv build`, `uv publish`) now cover the full lifecycle of a Python project from initialization through publishing within a single tool. This pattern of language-native project orchestration is well established across ecosystems — `npm` in JavaScript, `cargo` in Rust, and `go mod` in Go follow the same principle. 
-
-Depsight leverages uv's capabilities across its full lifecycle, covering [dependency management](#dependency-management), [building](#build-management), and [publishing](../integration_and_deployment/distribution.md#package-deployment), each of which is described in the sections below. The init phase, which bootstraps the project structure, is described here. Depsight's own project was initialized with a single command:
-
-```bash
-uv init my-package --build-backend "uv"
-```
-
-This generates a ready-to-use project scaffold with a `pyproject.toml`, a `src/` layout, a `.python-version` file, and an initial Git repository:
-
-```
-my-package/
-├── .git/
-├── .gitignore
-├── .python-version
-├── pyproject.toml
-├── README.md
-└── src/
-    └── my_package/
+    ```
+    my-package/
+    ├── README.md
+    ├── poetry.lock
+    ├── pyproject.toml
+    ├── src/
+    │   └── my_package/
+    │       └── __init__.py
+    └── tests/
         └── __init__.py
-```
+    ```
 
-Dependencies can then be added with `uv add`, which updates `pyproject.toml`, pins versions in a dedicated [lockfile](#lockfile), and installs the packages in one step:
+    ```toml
+    [project]
+    name = "my-package"
+    version = "0.1.0"
+    description = ""
+    authors = [
+        { name = "{GIT_USER}", email = "{GIT_MAIL}" }
+    ]
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = [
+        "lxml (>=6.0.2,<7.0.0)"
+    ]
 
-```bash
-uv add lxml
-uv add --group dev ruff
-```
+    [tool.poetry]
+    packages = [{include = "my_package", from = "src"}]
 
-The first command adds a runtime dependency under `[project].dependencies`, the second a development tool under `[dependency-groups].dev`. The resulting `pyproject.toml` reflects both additions:
+    [build-system]
+    requires = ["poetry-core>=2.0.0,<3.0.0"]
+    build-backend = "poetry.core.masonry.api"
 
-```toml
-[project]
-name = "my-package"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "lxml>=6.0.2",
-]
-
-[build-system]
-requires = ["uv_build>=0.11.1,<0.12"]
-build-backend = "uv_build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "ruff>=0.15.8"
-]
-```
+    [dependency-groups]
+    dev = [
+        "ruff (>=0.15.8,<0.16.0)",
+        "pytest (>=9.0.2,<10.0.0)"
+    ]
+    docs = [
+        "mkdocs (>=1.6.1,<2.0.0)",
+        "mkdocs-material (>=9.7.6,<10.0.0)"
+    ]
+    ```
 
 ---
 
@@ -250,9 +295,9 @@ The most widely adopted alternative is [Setuptools](https://pypi.org/project/set
 
 ### Dependency Management
 
-Dependency management is the process of declaring which third-party packages a project needs, resolving compatible versions, and installing them reproducibly across machines. In Python, this has historically been fragmented across tools such as `setup.py`, `requirements.txt`, `pip`, SPoetry, and pip-tools, which is why modern workflows increasingly converge on `pyproject.toml` plus a lockfile. A good Python dependency manager therefore needs to handle both packaging metadata and environment reproducibility.
+Dependency management is the process of declaring which third-party packages a project needs, resolving compatible versions, and installing them reproducibly across environments. As already introduced in [Project Orchestation](#project-orchestration), centralizing all dependency declarations in `pyproject.toml` significantly streamlines this process.
 
-Depsight uses [**uv**](https://docs.astral.sh/uv/) as its package manager. It is implemented in Rust and released by the team behind [Ruff](#linter-and-formatter). uv resolves and installs packages significantly faster than `pip` or any other Python dependency manager, using parallel downloads and a shared global cache. 
+Depsight uses [**uv**](https://docs.astral.sh/uv/) as its package manager, a Rust-based tool that resolves and installs packages significantly faster than `pip` or any other Python dependency manager through parallel downloads and a shared global cache.
 
 ```mermaid
 xychart-beta
@@ -262,21 +307,63 @@ xychart-beta
     bar [45, 40, 120, 25, 3]
 ```
 
-Beyond raw speed, uv integrates natively with `pyproject.toml`. Instead of maintaining separate `requirements.txt` files, uv reads dependency groups directly from `[dependency-groups]` and installs exactly what each context needs. A user can run `uv sync` to install the runtime dependencies declared in `[project].dependencies`. Additionally, when passing `--group dev` or `--group docs` to the `uv sync` command, uv installs the corresponding group, while `uv sync --all-groups` brings in everything at once. This makes local development, CI runs, and documentation builds fully reproducible with a single command and no extra tooling.
+#### Install Dependencies
+
+To install the direct and transitive dependencies declared in `pyproject.toml`, use `uv sync` during local development. In CI/CD, use `uv sync --locked` instead so the build installs exactly what is pinned in the committed `uv.lock` and fails immediately if the lockfile is out of sync with `pyproject.toml`.
+
+=== "Local Development"
+
+    ```bash
+    uv sync
+    ```
+
+=== "CI/CD"
+
+    ```bash
+    uv sync --locked
+    ```
+
+On a clean checkout, `uv sync` resolves the dependency graph, creates `uv.lock`, and sets up the `.venv`. On subsequent local runs, it updates both to match the current state of `pyproject.toml`. In CI/CD, `uv sync --locked` installs directly from the committed lockfile and aborts if that lockfile was not regenerated after a dependency change.
+
+| Command                       | Effect                                                                                     |
+|-------------------------------|--------------------------------------------------------------------------------------------|
+| `uv sync`                     | Installs all project dependencies                         |
+| `uv sync --group <group>`     | Also installs the dependencies declared in the named `<group>`                             |
+| `uv sync --locked`            | Installs from `uv.lock` and fails if the lockfile is not up to date with `pyproject.toml`  |
+| `uv sync --frozen`            | Installs from `uv.lock` as-is, without checking whether it matches `pyproject.toml`        |
+| `uv pip list`                 | Lists the packages currently installed in the active environment                            |
+| `uv lock --upgrade`           | Re-resolves the entire dependency graph and writes a new `uv.lock`                         |
+
+#### Updating Dependencies
+
+##### New Upstream Release, Constraint Unchanged
+
+Consider a project that declares `click>=8.1.7` in `pyproject.toml`. When `uv sync` first runs, it resolves `click` to version `8.1.7`, pins it in `uv.lock`, and the lockfile is committed to version control. Later, `click 8.2.0` and `8.3.1` are published upstream. If the constraint in `pyproject.toml` stays unchanged, the newer release is not picked up automatically.
+
+The constraint still reads `click>=8.1.7` and the lockfile already pins `8.1.7`, which satisfies it. Running `uv sync` installs `8.1.7` again because `uv` never upgrades a locked version on its own. To pick up the latest release, run `uv lock --upgrade-package click` followed by `uv sync`. This re-resolves only `click` (and its transitive dependencies), updates `uv.lock` to `8.3.1`, and installs the new version. To upgrade every package at once, run `uv lock --upgrade` instead.
+
+```mermaid
+flowchart LR
+    A["uv.lock pins<br>click 8.1.7"] -->|uv sync| B["Installs click 8.1.7<br>(lockfile unchanged)"]
+    A -->|uv lock --upgrade-package click| C["uv.lock updated to<br>click 8.3.1"]
+    C -->|uv sync| D["Installs click 8.3.1"]
+```
+
+##### Constraint Changed
+
+A developer changes the constraint from `click>=8.1.7` to `click>=8.2.0`. The locked version `8.1.7` no longer satisfies the new lower bound, so `uv sync` automatically re-resolves the dependency graph, updates `uv.lock` to `8.3.1`, and installs it. No separate `uv lock` step is needed.
+
+```mermaid
+flowchart LR
+    A["pyproject.toml<br>click ≥8.2.0"] -->|uv sync| B["uv.lock updated to<br>click 8.3.1"]
+    B --> C["Installs click 8.3.1"]
+```
 
 #### Lockfile
 
-One of `uv`'s most important capabilities is generating and maintaining a lockfile. Running `uv sync` resolves the full dependency graph, that includes both direct and transitive dependencies, and writes the result to `uv.lock`. Committing this file to version control makes the project fully reproducible; thus, every developer, CI run, and production build has `uv` parse the exact versions directly from the lockfile, installing bit-for-bit identical packages.
+A lockfile is a machine-generated snapshot of the fully resolved dependency graph. It pins exact versions, records download URLs with cryptographic hashes, and captures transitive dependencies. Committing it to version control ensures that every developer, CI run, and production build installs bit-for-bit identical packages without re-running the resolver. Until recently, each tool generated its own proprietary format (e.g. `poetry.lock`, `Pipfile.lock`, `uv.lock`) making lockfiles non-portable. [PEP 751](https://peps.python.org/pep-0751/) addresses this by introducing `pylock.toml`, a standardised, tool-agnostic format for the Python ecosystem.
 
-The excerpt below from Depsight's `uv.lock` shows the entry for `click`, one of its direct dependencies:
-
-- **`version`**: the exact resolved version (`8.3.1`)
-- **`source`**: the registry it was fetched from (`pypi.org`)
-- **`sdist` / `wheels`**: download URLs with SHA-256 hashes for both the source distribution and the wheel
-- **`dependencies`**: transitive dependencies, each with:
-    - `name`: the package name (here `colorama`)
-    - `marker`: a platform condition restricting when the dependency is required (here Windows only: `sys_platform == 'win32'`)
-
+As described in [Install Dependencies](#install-dependencies), `uv sync` locks both direct and transitive dependencies into `uv.lock` for reproducible installs. Since uv `v0.7.0`, `uv export --format pylock.toml` can convert it into the standardised format. The excerpt below shows entries for `click` and its transitive dependency `colorama`, including the pinned version, source registry, SHA-256 hashes for the source distribution and wheel, and a platform-conditional dependency via an environment marker:
 
 ```toml
 [[package]]
@@ -301,13 +388,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/.../colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d999..." },
 ]
 ```
-
-#### Updating Dependencies
-
-Any dependency change starts in `pyproject.toml` by adding a new package or adjust a version constraint, then run `uv sync`. uv compares the constraints against what is already pinned in `uv.lock` and, if the locked version still satisfies the updated constraint, leaves the lockfile untouched and installs exactly what was already recorded. To explicitly upgrade a specific package to the latest version within its constraint, run `uv lock --upgrade-package click` followed by `uv sync`. To upgrade all packages at once, `uv lock --upgrade` re-resolves the entire dependency graph before installing.
-
-!!! warning "`uv.lock` takes precedence over `pyproject.toml`"
-    Bumping `click>=8.1.7` to `click>=8.2.0` in `pyproject.toml` and then running `uv sync` will still install `click 8.3.1` if that is what the lockfile already pins, because `8.3.1` satisfies `>=8.2.0`. The `pyproject.toml` only defines the allowed range — the lockfile determines the actual installed version. Deleting `uv.lock` is not the right solution, as it forces a full re-resolution of all packages from scratch.
 
 ---
 
