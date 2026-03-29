@@ -50,5 +50,5 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "uv sync --all-groups --locked"
+    "postCreateCommand": "uv sync --all-groups --frozen"
 }
