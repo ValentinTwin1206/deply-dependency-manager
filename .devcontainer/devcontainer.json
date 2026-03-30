@@ -53,5 +53,5 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "uv sync --all-groups"
+    "postCreateCommand": "sudo chown -R vscode /home/vscode/.cache/uv && uv sync --all-groups"
 }
