@@ -80,9 +80,6 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           configFile: .devcontainer/devcontainer.json
-          buildArgs: |
-            PYTHON_VERSION=${{ steps.python.outputs.python_version }}
-            UV_VERSION=${{ inputs.uv_version }}
           runCmd: |
 
             # Exit on error, unset vars, or pipe failures
@@ -141,7 +138,7 @@ jobs:
         if: ${{ inputs.is_release }}
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: uv publish --check
+        run: uv publish
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
