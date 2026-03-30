@@ -162,14 +162,20 @@ When `upload_artifact` is set to `true` in the dispatch inputs, the wheel is att
 
 ### Publishing to PyPI
 
-On release builds (`is_release: true`), the wheel is published to PyPI using the official `pypa/gh-action-pypi-publish` action. The traditional upload tool is [`twine`](https://twine.readthedocs.io/), but `uv publish` and the `pypa/gh-action-pypi-publish` action both handle the upload without requiring a separate install. The `PYPI_TOKEN` secret must be configured in the repository settings.
+On release builds (`is_release: true`), the wheel is published to PyPI using `uv publish`. The `uv build` step runs inside the DevContainer, but the publish step runs directly on the bare GitHub runner where `uv` is not pre-installed. The [`astral-sh/setup-uv`](https://github.com/astral-sh/setup-uv) action installs the same `uv` version that is pinned via the `uv_version` input, keeping the toolchain consistent. The `PYPI_TOKEN` repository secret is passed to `uv publish` via the `UV_PUBLISH_TOKEN` environment variable.
 
 ```yaml
+- name: Install uv
+  if: ${{ inputs.is_release }}
+  uses: astral-sh/setup-uv@v5
+  with:
+    version: ${{ inputs.uv_version }}
+
 - name: Upload wheel to PyPI
   if: ${{ inputs.is_release }}
-  uses: pypa/gh-action-pypi-publish@release/v1
-  with:
-    password: ${{ secrets.PYPI_TOKEN }}
+  env:
+    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+  run: uv publish
 ```
 
 ### Setting Up Buildx
