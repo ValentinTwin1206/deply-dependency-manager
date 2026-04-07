@@ -145,92 +145,174 @@ The `[project]` table consolidates everything that used to live across `setup.py
 
 With `pyproject.toml` as a stable foundation, the Python ecosystem now has the same capability as other languages (e.g. `npm`, `cargo`, `go mod`) to orchestrate the entire project lifecycle around a single central configuration file.
 
-Tools such as [Poetry](https://python-poetry.org/) and [uv](https://docs.astral.sh/uv/) expose a unified interface covering project initialization (`uv init` / `poetry new`), dependency management (`uv add` / `poetry add`), environment synchronization (`uv sync`), building (`uv build` / `poetry build`), and publishing (`uv publish` / `poetry publish`). Both tools scaffold a PEP 621-compliant `pyproject.toml` from a single command and support various flags to customise the output layout, Python version, or build backend:
+Tools such as [Poetry](https://python-poetry.org/) and [uv](https://docs.astral.sh/uv/) expose a clean CLI covering project initialization (`uv init` / `poetry new`), dependency management (`uv add` / `poetry add`), environment synchronization (`uv sync`) as well as building (`uv build` / `poetry build`), and publishing (`uv publish` / `poetry publish`) Python packages.
+
+##### Project Initialization
+
+Both tools scaffold a PEP 621-compliant `pyproject.toml` from a single command and support various flags to customise the output layout, Python version, package name, or build backend:
 
 === "`uv`"
 
+    Following command scaffolds a new project in the `my-uv-package` directory:
+
+    - The `--name "hello"` decouples the package name from the folder name
+    - The `--build-backend "uv"` flag selects `uv_build` as the build backend
+    - The `--app` flag requests an application-oriented project  with a `src` layout
+
     ```bash
-    uv init my-package --build-backend "uv"
+    uv init my-uv-package --name "hello" --build-backend "uv" --app
+    ```
+
+    The resulting project directory after running `uv init`:
+
+    ```
+    my-uv-package/
+    ├── .git/
+    ├── .gitignore
+    ├── .python-version
+    ├── README.md
+    ├── pyproject.toml
+    └── src
+        └── hello
+            └── __init__.py  
+    ```
+
+    The generated `pyproject.toml` uses `uv_build` as the build backend:
+
+    ```toml
+    [project]
+    name = "hello"
+    version = "0.1.0"
+    description = "Add your description here"
+    readme = "README.md"
+    authors = [
+        { name = "ValentinTwin1206", email = "vpravtchev@gmail.com" }
+    ]
+    requires-python = ">=3.12"
+    dependencies = []
+
+    [project.scripts]
+    hello = "hello:main"
+
+    [build-system]
+    requires = ["uv_build>=0.11.1,<0.12.0"]
+    build-backend = "uv_build"
     ```
 
 === "`poetry`"
 
+    Following command scaffolds a new project in the `my-poetry-package` directory:
+
+    - The `--name "hello"` flag decouples the package name from the folder name
+    - Poetry already creates a package-oriented project with a `src` layout by default
+    - Poetry uses `poetry-core` as its build backend by default
+
     ```bash
-    poetry new my-package
+    poetry new my-poetry-package --name "hello"
     ```
 
-Both tools provide an `add` command to register packages as part of the project, either as runtime dependencies or scoped to a named group via `--group <name>`:
+    The resulting project directory after running `poetry new`:
+
+    ```
+    my-poetry-package/
+    ├── README.md
+    ├── pyproject.toml
+    ├── src/
+    │   └── my_package/
+    │       └── __init__.py
+    └── tests/
+        └── __init__.py
+    ```
+
+    The generated `pyproject.toml` uses `poetry.core.masonry.api` as the build backend:
+
+    ```toml
+    [project]
+    name = "hello"
+    version = "0.1.0"
+    description = ""
+    authors = [
+        {name = "ValentinTwin1206",email = "vpravtchev@gmail.com"}
+    ]
+    readme = "README.md"
+    requires-python = ">=3.12"
+    dependencies = [
+    ]
+
+    [tool.poetry]
+    packages = [{include = "hello", from = "src"}]
+
+    [build-system]
+    requires = ["poetry-core>=2.0.0,<3.0.0"]
+    build-backend = "poetry.core.masonry.api"
+    ```
+
+##### Dependency Installation
+
+The `hello` project can further be extended by adding runtime dependencies by using uv's and Poetry's `add` command. The following examples installs the [click](https://github.com/pallets/click) library which is a popular framework for building command-line interfaces. Since `click` only depends on `colorama` on Windows, it also serves as a useful starting point for out later understanding how [lockfiles](#lockfile) capture transitive dependencies.
 
 === "`uv`"
 
-    ```bash
-    cd my-package
-    uv add lxml
-    uv add --group dev ruff pytest
-    uv add --group docs mkdocs mkdocs-material
-    ```
-
-=== "`poetry`"
+    Following command installs the `click` library:
 
     ```bash
-    cd my-package
-    poetry add lxml
-    poetry add --group dev ruff pytest
-    poetry add --group docs mkdocs mkdocs-material
+    cd my-uv-package
+    uv add click==8.1.7
     ```
 
-Both tools update `pyproject.toml` and their respective lockfile on every `add` call. With `uv`, each invocation also immediately installs the package into a `.venv` in the project root, keeping the virtual environment continuously in sync. The resulting `pyproject.toml` only differs in the `[build-system]` table:
-
-=== "`uv`"
+    In addition to updating `pyproject.toml`, uv resolves the full dependency graph, writes a `uv.lock` lockfile, and creates a Python venv `.venv` that is kept automatically in sync:
 
     ```
-    my-package/
+    my-uv-package/
     ├── .git/
     ├── .gitignore
     ├── .python-version
     ├── .venv
     ├── README.md
-    ├── main.py
     ├── pyproject.toml
+    ├── src
+    │   └── hello
+    │       └── __init__.py  
     └── uv.lock
     ```
 
+    The generated `pyproject.toml` declares `click` as a runtime dependency:
+
     ```toml
     [project]
-    name = "my-package"
+    name = "hello"
     version = "0.1.0"
     description = "Add your description here"
     readme = "README.md"
     authors = [
-        { name = "{GIT_USER}", email = "{GIT_MAIL}" }
+        { name = "{GIT_NAME}", email = "{GIT_MAIL}" }
     ]
     requires-python = ">=3.12"
     dependencies = [
-        "lxml>=6.0.2",
+        "click==8.1.7",
     ]
 
     [project.scripts]
-    hello-world = "hello_world:main"
+    hello = "hello:main"
 
     [build-system]
     requires = ["uv_build>=0.11.1,<0.12.0"]
     build-backend = "uv_build"
-
-    [dependency-groups]
-    dev = [
-        "pytest>=9.0.2",
-        "ruff>=0.15.8",
-    ]
-    docs = [
-        "mkdocs>=1.6.1",
-        "mkdocs-material>=9.7.6",
-    ]
     ```
 
 === "`poetry`"
 
+    Following command installs the `click` library:
+    
+    ```bash
+    cd my-poetry-package
+    poetry add click
     ```
-    my-package/
+
+    In addition to updating `pyproject.toml`, Poetry resolves the full dependency graph and writes a `poetry.lock` lockfile:
+
+    ```
+    my-poetry-package/
     ├── README.md
     ├── poetry.lock
     ├── pyproject.toml
@@ -241,36 +323,72 @@ Both tools update `pyproject.toml` and their respective lockfile on every `add` 
         └── __init__.py
     ```
 
+    Note that the generated `pyproject.toml` declares `click` as a runtime dependency under `[tool.poetry.dependencies]` rather than the standard PEP 621 `"dependencies"` list:
+
     ```toml
     [project]
-    name = "my-package"
+    name = "hello"
     version = "0.1.0"
     description = ""
     authors = [
-        { name = "{GIT_USER}", email = "{GIT_MAIL}" }
+        { name = "{GIT_NAME}", email = "{GIT_MAIL}" }
     ]
     readme = "README.md"
     requires-python = ">=3.12"
-    dependencies = [
-        "lxml (>=6.0.2,<7.0.0)"
-    ]
 
     [tool.poetry]
-    packages = [{include = "my_package", from = "src"}]
+    packages = [{include = "hello", from = "src"}]
+
+    [tool.poetry.dependencies]
+    click = "8.1.7"
 
     [build-system]
     requires = ["poetry-core>=2.0.0,<3.0.0"]
     build-backend = "poetry.core.masonry.api"
+    ```
 
-    [dependency-groups]
-    dev = [
-        "ruff (>=0.15.8,<0.16.0)",
-        "pytest (>=9.0.2,<10.0.0)"
-    ]
-    docs = [
-        "mkdocs (>=1.6.1,<2.0.0)",
-        "mkdocs-material (>=9.7.6,<10.0.0)"
-    ]
+##### Running the Project
+
+The following `__init__.py` uses `click` to define a minimal CLI command. It accepts an optional `--name` argument and prints a greeting to the terminal:
+
+```python
+# __init__.py
+import click
+
+@click.command()
+@click.option("--name", default="World", help="Name to greet.")
+def main(name):
+    click.echo(f"Hello, {name}!")
+
+if __name__ == "__main__":
+    main()
+```
+
+The following patterns show how to bootstrap the project environment and run the CLI for each tool:
+
+=== "`uv`"
+
+    Activate the virtual environment that `uv` created automatically, then run the CLI:
+
+    ```bash
+    source .venv/bin/activate
+    uv run src/hello/__init__.py --name Alice
+    ```
+
+=== "`poetry`"
+
+    Poetry does not create a virtual environment automatically, so we create and activate one first, then install all declared dependencies into it:
+
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    poetry install
+    ```
+
+    Run the CLI by passing the file to the `python` interpreter explicitly:
+
+    ```bash
+    poetry run python src/hello/__init__.py --name Alice
     ```
 
 ---
@@ -307,94 +425,154 @@ xychart-beta
     bar [45, 40, 120, 25, 3]
 ```
 
-#### Install Dependencies
+#### Synchronizing Dependencies
 
-To install the direct and transitive dependencies declared in `pyproject.toml`, use `uv sync` during local development. In CI/CD pipelines, use `uv sync --locked` to ensure the build environment matches the committed `uv.lock` exactly. This prevents "it works on my machine" issues by failing the build if the lockfile is out of sync with your project requirements.
+The `uv sync` command installs all **direct dependencies** declared in `pyproject.toml` at once, along with their full **transitive dependency graph**. On a clean checkout, uv generates a [lockfile](#lockfile) if one does not yet exist and provisions a virtual environment at `.venv/`. Any packages that have been downloaded before are served from uv's [global cache](#cache) rather than fetched from the network again, which makes repeated installs significantly faster. On subsequent runs, it detects any drift between `pyproject.toml` and the [lockfile](#lockfile) and reconciles them. The virtual environment is always kept in sync automatically, so developers can immediately work with the correct set of packages without any manual intervention.
+
+The `uv sync` command provides a set of flags that must be chosen carefully according to the target environment and use case. They significantly change its behaviour — from a permissive local install that re-resolves freely, to a strict CI check that fails on any lockfile drift, to a fully frozen production deployment that never touches `pyproject.toml` at all:
 
 === "Local Development"
 
     ```bash
+    # Install all dependencies and the project itself in editable mode
     uv sync
+
+    # Also include an optional dependency-group (e.g. docs or lint)
+    uv sync --group docs
     ```
 
 === "CI/CD (Verification)"
 
     ```bash
+    # Install all groups and abort if uv.lock is out of sync with pyproject.toml
+    # Ensures the lockfile was updated whenever dependencies changed
     uv sync --all-groups --locked
     ```
 
 === "CI/CD (Production deployment)"
 
     ```bash
+    # Install from uv.lock as-is, skip dev dependencies, never check pyproject.toml
+    # Fastest and most reproducible option for containerised deployments
     uv sync --frozen --no-dev
     ```
 
-On a clean checkout, `uv sync` resolves the dependency graph, generates an `uv.lock` file, and creates a synchronized virtual environment in `.venv/`. On subsequent runs, it incrementally updates the environment to match the latest state of `pyproject.toml`. In CI/CD, the `--locked` flag enforces that no manual changes were made to dependencies without a corresponding lockfile update.
-
-| Command                       | Effect                                                                        | Best Use Case          |
-|-------------------------------|-------------------------------------------------------------------------------|------------------------|
-| `uv sync`                     | Installs dependencies and the project in editable mode.                       | Daily Development      |
-| `uv sync --group <name>`      | Includes optional dependency-groups (e.g., `docs` or `lint`).                | Task-specific work     |
-| `uv sync --locked`            | Installs from `uv.lock`; aborts if `pyproject.toml` has changed.             | CI Test Pipelines      |
-| `uv sync --frozen`            | Installs from `uv.lock` as-is, without checking `pyproject.toml`.            | Docker / Production    |
-| `uv pip list`                 | Displays all packages in the current virtual environment.                     | Debugging              |
-| `uv lock --upgrade`           | Forces a re-resolution of all packages to the latest versions.               | Maintenance            |
-
-
 #### Updating Dependencies
 
-##### New Upstream Release, Constraint Unchanged
-
-Consider a project that declares `click>=8.1.7` in `pyproject.toml`. When `uv sync` first runs, it resolves `click` to version `8.1.7`, pins it in `uv.lock`, and the lockfile is committed to version control. Later, `click 8.2.0` and `8.3.1` are published upstream. If the constraint in `pyproject.toml` stays unchanged, the newer release is not picked up automatically.
-
-The constraint still reads `click>=8.1.7` and the lockfile already pins `8.1.7`, which satisfies it. Running `uv sync` installs `8.1.7` again because `uv` never upgrades a locked version on its own. To pick up the latest release, run `uv lock --upgrade-package click` followed by `uv sync`. This re-resolves only `click` (and its transitive dependencies), updates `uv.lock` to `8.3.1`, and installs the new version. To upgrade every package at once, run `uv lock --upgrade` instead.
+Consider the [`hello` project](#dependency-installation) changed `click==8.1.7` to `click>=8.1.7` in `pyproject.toml` while `uv.lock` still pins `8.1.7`. Because the locked version still satisfies the loosened constraint, `uv sync` keeps installing `8.1.7`. To pull in a newer release explicitly, run `uv lock --upgrade-package click` followed by `uv sync`.
 
 ```mermaid
-flowchart LR
-    A["uv.lock pins<br>click 8.1.7"] -->|uv sync| B["Installs click 8.1.7<br>(lockfile unchanged)"]
-    A -->|uv lock --upgrade-package click| C["uv.lock updated to<br>click 8.3.1"]
-    C -->|uv sync| D["Installs click 8.3.1"]
-```
-
-##### Constraint Changed
-
-A developer changes the constraint from `click>=8.1.7` to `click>=8.2.0`. The locked version `8.1.7` no longer satisfies the new lower bound, so `uv sync` automatically re-resolves the dependency graph, updates `uv.lock` to `8.3.1`, and installs it. No separate `uv lock` step is needed.
-
-```mermaid
-flowchart LR
-    A["pyproject.toml<br>click ≥8.2.0"] -->|uv sync| B["uv.lock updated to<br>click 8.3.1"]
-    B --> C["Installs click 8.3.1"]
+flowchart TD
+    A["Project initialized with click==8.1.7"]
+    A -->|uv sync| B["click v8.1.7 gets installed and locked"]
+    B -.->C["Constraint click==8.1.7 changes to click>=8.1.7"]
+    C -->|uv sync| D["Constraint satisfied<br>uv.lock keeps 8.1.7"]
+    C -->|uv sync --locked| E["Mismatch detected<br>Aborts with error"]
+    C -->|uv sync --frozen| F["Reads uv.lock as-is<br>Installs 8.1.7"]
+    C -->|uv lock --upgrade| G["Latest version of click gets pinned in uv.lock"]
+    G -->|uv sync| H["Upgrades click in .venv to latest version"]
 ```
 
 #### Lockfile
 
-A lockfile is a machine-generated snapshot of the fully resolved dependency graph. It pins exact versions, records download URLs with cryptographic hashes, and captures transitive dependencies. Committing it to version control ensures that every developer, CI run, and production build installs bit-for-bit identical packages without re-running the resolver. Until recently, each tool generated its own proprietary format (e.g. `poetry.lock`, `Pipfile.lock`, `uv.lock`) making lockfiles non-portable. [PEP 751](https://peps.python.org/pep-0751/) addresses this by introducing `pylock.toml`, a standardised, tool-agnostic format for the Python ecosystem.
+The `uv.lock` below is the direct result of running `uv add click==8.1.7` on the [`hello` project](#dependency-installation). Because the lockfile records exact versions and SHA-256 hashes for every package in the dependency graph, every developer, CI run, and deployment installs bit-for-bit identical packages regardless of when or where `uv sync` is executed.
 
-As described in [Install Dependencies](#install-dependencies), `uv sync` locks both direct and transitive dependencies into `uv.lock` for reproducible installs. Since uv `v0.7.0`, `uv export --format pylock.toml` can convert it into the standardised format. The excerpt below shows entries for `click` and its transitive dependency `colorama`, including the pinned version, source registry, SHA-256 hashes for the source distribution and wheel, and a platform-conditional dependency via an environment marker:
+Like every dependency manager, uv uses its own proprietary lockfile format, making toolchain migrations a breaking change. [PEP 751](https://peps.python.org/pep-0751/) introduced `pylock.toml` as a standardised, tool-agnostic export format to address lockfile fragmentation across toolchains, but it is not a replacement for `uv.lock`. uv does not read `pylock.toml` back for any command or updating the project's venv, so replacing `uv.lock` with it would break the entire uv workflow. Its purpose is interoperability and auditing — for example, sharing a resolved dependency snapshot with a team that uses a different package manager. The `pylock.toml` below was generated by running `uv export --format pylock.toml > pylock.toml`.
 
-```toml
-[[package]]
-name = "click"
-version = "8.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/.../click-8.3.1.tar.gz", hash = "sha256:12ff478..." }
-wheels = [
-    { url = "https://files.pythonhosted.org/.../click-8.3.1-py3-none-any.whl", hash = "sha256:981153a..." },
-]
+=== "`uv.lock`"
 
-# transitive dependency of click (Windows only)
-[[package]]
-name = "colorama"
-version = "0.4.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/.../colorama-0.4.6.tar.gz", hash = "sha256:08695f5..." }
-wheels = [
-    { url = "https://files.pythonhosted.org/.../colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d999..." },
-]
+    ```toml
+    version = 1
+    revision = 3
+    requires-python = ">=3.12"
+
+    [[package]]
+    name = "click"
+    version = "8.1.7"
+    source = { registry = "https://pypi.org/simple" }
+    dependencies = [
+        { name = "colorama", marker = "sys_platform == 'win32'" },
+    ]
+    sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121, upload-time = "2023-08-17T17:29:11.868Z" }
+    wheels = [
+        { url = "https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl", hash = "sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28", size = 97941, upload-time = "2023-08-17T17:29:10.08Z" },
+    ]
+
+    [[package]]
+    name = "colorama"
+    version = "0.4.6"
+    source = { registry = "https://pypi.org/simple" }
+    sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
+    wheels = [
+        { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+    ]
+
+    [[package]]
+    name = "hello"
+    version = "0.1.0"
+    source = { editable = "." }
+    dependencies = [
+        { name = "click" },
+    ]
+
+    [package.metadata]
+    requires-dist = [{ name = "click", specifier = "==8.1.7" }]
+    ```
+
+=== "`pylock.toml`"
+
+    ```toml
+    lock-version = "1.0"
+    created-by = "uv"
+    requires-python = ">=3.12"
+
+    [[packages]]
+    name = "click"
+    version = "8.1.7"
+    index = "https://pypi.org/simple"
+    sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", upload-time = 2023-08-17T17:29:11Z, size = 336121, hashes = { sha256 = "ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de" } }
+    wheels = [{ url = "https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl", upload-time = 2023-08-17T17:29:10Z, size = 97941, hashes = { sha256 = "ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28" } }]
+
+    [[packages]]
+    name = "colorama"
+    version = "0.4.6"
+    marker = "sys_platform == 'win32'"
+    index = "https://pypi.org/simple"
+    sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", upload-time = 2022-10-25T02:36:22Z, size = 27697, hashes = { sha256 = "08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44" } }
+    wheels = [{ url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", upload-time = 2022-10-25T02:36:20Z, size = 25335, hashes = { sha256 = "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6" } }]
+
+    [[packages]]
+    name = "hello"
+    directory = { path = ".", editable = true }
+    ```
+
+
+#### Cache
+
+uv maintains a shared, global package cache at `~/.cache/uv` on Linux and macOS (and `%LOCALAPPDATA%\uv\cache` on Windows). Its multi-layer architecture — interpreter metadata, HTTP metadata, extracted archives, and virtual environment links — is the primary reason `uv sync` is significantly faster than other package managers: on repeated runs, uv can skip the interpreter interrogation, the network request, and the extraction step entirely. Because each layer is content-addressed and keyed by package name, version, and wheel tag, different Python versions and platforms never collide in the same cache. Cache entries can be inspected and pruned with `uv cache dir`, `uv cache clean`, and `uv cache prune`. Again, consider the [`hello` project](#dependency-installation) with `click==8.1.7` locked in `uv.lock`.
+
 ```
+~/.cache/uv/
+├── archive-v0/
+│   └── hme55N4OUvYG9esKH1cmH/                  ← extracted wheel contents
+│       ├── click/
+│       │   ├── __init__.py
+│       │   └── ...
+│       └── click-8.1.7.dist-info/
+├── interpreter-v4/
+│   └── 2599639d1b0af0a8/
+│       └── 2ab6934b930fb655.msgpack        ← Python interpreter metadata
+└── wheels-v6/
+    └── pypi/
+        └── click/
+            └── click-8.1.7-py3-none-any.http   ← HTTP metadata & hash
+                └── 8.1.7-py3-none-any -> ../../../../archive-v0/hme55N4O.../
+```
+
+- **Interpreter metadata (`interpreter-v4/`)** — Before resolving or installing anything, uv needs to know which Python interpreter to use. It caches the result of interrogating a Python binary in a MessagePack file (`.msgpack`) keyed by the interpreter path. This file records the interpreter version (`3.12.3`), platform details (`linux`, `x86_64`), and the `.venv` site-packages layout. On subsequent runs, uv reads this cache instead of spawning the interpreter again, which removes the startup overhead entirely.
+- **HTTP metadata (`wheels-v6/`)** — Each wheel URL in `uv.lock` maps to a `.http` metadata file here. When `uv sync` runs, it generates a cache key from the wheel URL and checks whether the SHA-256 hash in `uv.lock` matches the cached metadata. If it does, uv knows the remote file has not changed and skips the network request to PyPI entirely.
+- **Extracted archive (`archive-v0/`)** — When uv downloads a wheel for the first time, it does not just store the `.whl` file. It extracts the wheel contents into a content-addressed directory under `archive-v0/` and stores a symlink to it inside `wheels-v6/`. On subsequent installs, uv follows that symlink and finds the package ready to use without any extraction step.
+- **Installation into `.venv` via hardlinks or reflinks** — uv links the pre-extracted files from `archive-v0/` directly into `.venv` without copying any bytes. On copy-on-write filesystems (Btrfs, XFS, APFS) it uses reflinks; on ext4 it falls back to hardlinks. Either way, no data is duplicated on disk and the install completes nearly instantaneously.
 
 ---
 
