@@ -192,7 +192,7 @@ On every build, the workflow scans the locally-built Docker image for known vuln
     image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
     format: "sarif"
     output: "trivy-results.sarif"
-    exit-code: "1"
+    exit-code: "0"
     ignore-unfixed: true
     vuln-type: "os,library"
     severity: "CRITICAL,HIGH"
