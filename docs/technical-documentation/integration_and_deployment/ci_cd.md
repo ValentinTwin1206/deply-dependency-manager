@@ -96,11 +96,12 @@ flowchart LR
     B["Lint, test & build wheel"]
     A["Upload artifact"]
     D["Build Docker image"]
+    T["Trivy vulnerability scan"]
     P["Publish to PyPI"]
     PD["Push Docker image"]
 
     V --> B --> A
-    B --> D
+    B --> D --> T
     B --> P --> PD
   end
 
@@ -178,6 +179,30 @@ On release builds (`is_release: true`), the wheel is published to PyPI using `uv
   env:
     UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
   run: uv publish
+```
+
+### Scanning the Docker Image with Trivy
+
+On release builds, the workflow scans the locally-built Docker image for known vulnerabilities using [Trivy](https://github.com/aquasecurity/trivy), an open-source container and artifact scanner by Aqua Security. The scan targets OS packages and application libraries, and is configured to report only `CRITICAL` and `HIGH` severity issues that have a known fix available. Results are written as a [SARIF](https://sarifweb.azurewebsites.net/) file and uploaded to the repository's **Security → Code scanning alerts** tab via the CodeQL upload action, giving maintainers a centralised view of vulnerabilities directly inside GitHub.
+
+```yaml
+- name: Run Trivy vulnerability scan
+  if: ${{ inputs.is_release }}
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
+    format: "sarif"
+    output: "trivy-results.sarif"
+    exit-code: "1"
+    ignore-unfixed: true
+    vuln-type: "os,library"
+    severity: "CRITICAL,HIGH"
+
+- name: Upload Trivy scan to GitHub Security tab
+  if: ${{ inputs.is_release }}
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: "trivy-results.sarif"
 ```
 
 ### Setting Up Buildx
