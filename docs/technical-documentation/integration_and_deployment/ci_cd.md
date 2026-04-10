@@ -96,13 +96,14 @@ flowchart LR
     B["Lint, test & build wheel"]
     A["Upload artifact"]
     D["Build Docker image"]
-    T["Trivy vulnerability scan"]
     P["Publish to PyPI"]
+    TG["Trivy release gate\n(CRITICAL, blocking)"]
     PD["Push Docker image"]
 
     V --> B --> A
-    B --> D --> T
-    B --> P --> PD
+    B --> D --> TG
+    B --> P --> TG
+    TG --> PD
   end
 
   PR -- "is_release: false" --> V
@@ -181,27 +182,24 @@ On release builds (`is_release: true`), the wheel is published to PyPI using `uv
   run: uv publish
 ```
 
-### Scanning the Docker Image with Trivy
+### Trivy Release Gate
 
-On every build, the workflow scans the locally-built Docker image for known vulnerabilities using [Trivy](https://github.com/aquasecurity/trivy), an open-source container and artifact scanner by Aqua Security. The scan targets OS packages and application libraries, and is configured to report only `CRITICAL` and `HIGH` severity issues that have a known fix available. Results are written as a [SARIF](https://sarifweb.azurewebsites.net/) file and uploaded to the repository's **Security → Code scanning alerts** tab via the CodeQL upload action, giving maintainers a centralised view of vulnerabilities directly inside GitHub.
+Before the Docker image is pushed to Docker Hub, a blocking vulnerability scan is run using [Trivy](https://github.com/aquasecurity/trivy). This step only runs on release builds (`is_release: true`) and targets `CRITICAL` severity issues exclusively. If any unfixed critical vulnerability is found, the pipeline fails immediately with `exit-code: "1"` and the image is never pushed.
+
+Results are rendered as a formatted table directly in the workflow log. No SARIF file is written and no results are uploaded to the Security tab — continuous monitoring across all branches is handled by the dedicated `trivy.yml` workflow (see [Security](#security) below).
 
 ```yaml
-- name: Run Trivy vulnerability scan
+- name: Trivy release gate (block on CRITICAL)
+  if: ${{ inputs.is_release }}
   uses: aquasecurity/trivy-action@master
   with:
     image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
-    format: "sarif"
-    output: "trivy-results.sarif"
-    exit-code: "0"
+    format: "table"
+    exit-code: "1"
     ignore-unfixed: true
     vuln-type: "os,library"
-    severity: "CRITICAL,HIGH"
-
-- name: Upload Trivy scan to GitHub Security tab
-  if: ${{ always() }}
-  uses: github/codeql-action/upload-sarif@v3
-  with:
-    sarif_file: "trivy-results.sarif"
+    scanners: "vuln"
+    severity: "CRITICAL"
 ```
 
 ### Setting Up Buildx
@@ -268,3 +266,62 @@ On release builds (`is_release: true`), the image is pushed to Docker Hub in a s
       ${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}
       ${{ vars.DOCKER_REPOSITORY }}:latest
 ```
+
+---
+
+## Security
+
+Depsight uses a two-layer security model: continuous vulnerability monitoring via a dedicated workflow, and a blocking release gate inside the build pipeline.
+
+### Vulnerability Monitoring (`trivy.yml`)
+
+The `trivy.yml` workflow runs independently of the build pipeline. It builds the Docker image locally (never pushed), scans it with Trivy, and handles results differently depending on how it was triggered:
+
+| Trigger | Output format | Uploaded to Security tab |
+|---|---|---|
+| `push` to `main` | SARIF | Yes |
+| `pull_request` to `main` | SARIF | Yes |
+| `schedule` (weekly) | SARIF | Yes |
+| `workflow_dispatch` on `main` | SARIF | Yes |
+| `workflow_dispatch` on any other branch | Table (console) | No |
+
+When SARIF output is enabled, results are uploaded to the repository's **Security → Code scanning alerts** tab via the CodeQL upload action. This gives maintainers a centralised view of `CRITICAL` and `HIGH` severity vulnerabilities with known fixes directly inside GitHub.
+
+When triggered manually on a non-`main` branch, findings are rendered as a formatted table in the Actions log instead. This is useful for scanning a feature branch image without polluting the Security tab with in-progress work.
+
+```yaml
+- name: Run Trivy vulnerability scanner (SARIF)
+  if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
+    format: "sarif"
+    output: "trivy-results.sarif"
+    exit-code: "0"
+    ignore-unfixed: true
+    vuln-type: "os,library"
+    scanners: "vuln"
+    severity: "CRITICAL,HIGH"
+
+- name: Run Trivy vulnerability scanner (console)
+  if: ${{ github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
+    format: "table"
+    exit-code: "0"
+    ignore-unfixed: true
+    vuln-type: "os,library"
+    scanners: "vuln"
+    severity: "CRITICAL,HIGH"
+
+- name: Upload Trivy scan results to GitHub Security tab
+  if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+  uses: github/codeql-action/upload-sarif@v4
+  with:
+    sarif_file: "trivy-results.sarif"
+```
+
+### Security Policy
+
+The repository includes a `SECURITY.md` file at its root, which GitHub surfaces automatically in the **Security** tab. It documents the supported version policy and instructs reporters to use [GitHub's private vulnerability reporting](../../security/advisories/new) rather than opening a public issue. This keeps vulnerability details confidential until a patched release is available.
