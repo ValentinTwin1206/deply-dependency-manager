@@ -8,6 +8,10 @@ on:
       - 'README.md'
       - 'docs/**'
 
+permissions:
+  security-events: write # REQUIRED for the called Trivy scan to upload results
+  actions: read
+
 jobs:
   parse-version:
     runs-on: ubuntu-latest
