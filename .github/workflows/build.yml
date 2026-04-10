@@ -167,7 +167,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
-          severity: "CRITICAL,HIGH"
+          severity: "CRITICAL,HIGH,MEDIUM"
 
       - name: Upload Trivy scan to GitHub Security tab
         if: ${{ always() }}
