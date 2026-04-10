@@ -144,6 +144,17 @@ jobs:
             ${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}
             ${{ vars.DOCKER_REPOSITORY }}:latest
 
+      - name: Trivy vulnerability gate (block on CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          scanners: "vuln"
+          severity: "CRITICAL"
+
       - name: Install uv
         if: ${{ inputs.is_release }}
         uses: astral-sh/setup-uv@v5
@@ -162,18 +173,6 @@ jobs:
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PAT }}
-
-      - name: Trivy release gate (block on CRITICAL)
-        if: ${{ inputs.is_release }}
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
-          format: "table"
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          scanners: "vuln"
-          severity: "CRITICAL"
 
       - name: Push Docker image
         if: ${{ inputs.is_release }}
