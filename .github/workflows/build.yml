@@ -129,6 +129,17 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+      - name: Filesystem vulnerability gate (block on CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          scanners: "vuln,secret"
+          severity: "CRITICAL"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -144,7 +155,7 @@ jobs:
             ${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}
             ${{ vars.DOCKER_REPOSITORY }}:latest
 
-      - name: Trivy vulnerability gate (block on CRITICAL)
+      - name: Container vulnerability gate (block on CRITICAL)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"

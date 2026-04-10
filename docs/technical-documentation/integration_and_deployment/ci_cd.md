@@ -95,15 +95,16 @@ flowchart LR
     V["Verify version"]
     B["Lint, test & build wheel"]
     A["Upload artifact"]
+    FG["Filesystem vulnerability gate\n(source + deps + secrets)"]
     D["Build Docker image"]
-    TG["Trivy vulnerability gate\n(CRITICAL, blocking — always)"]
+    IG["Container vulnerability gate\n(OS + libraries)"]
     P["Publish to PyPI"]
     PD["Push Docker image"]
 
     V --> B --> A
-    B --> D --> TG
-    TG --> P
-    TG --> PD
+    B --> FG --> D --> IG
+    IG --> P
+    IG --> PD
   end
 
   PR -- "is_release: false" --> V
@@ -182,16 +183,33 @@ On release builds (`is_release: true`), the wheel is published to PyPI using `uv
   run: uv publish
 ```
 
-### Trivy Vulnerability Gate
+### Trivy Vulnerability Gates
 
-After the Docker image is built, a blocking vulnerability scan is run using [Trivy](https://github.com/aquasecurity/trivy) on **every build**. It targets `CRITICAL` severity issues exclusively. If any unfixed critical vulnerability is found, the pipeline fails immediately with `exit-code: "1"` and no publish steps run.
+Depsight ships two artifacts — a Python wheel to PyPI and a Docker image to Docker Hub. The build pipeline runs two complementary Trivy scans on **every build** (not just releases) to ensure neither artifact ships with known critical vulnerabilities.
 
-Running this gate unconditionally means that a CRITICAL CVE will prevent the wheel from reaching PyPI and the image from reaching Docker Hub, regardless of whether the build is a release. It also ensures that PRs and dispatch runs surface critical issues early, before they ever reach a release build.
+#### Filesystem Gate
 
-Results are rendered as a formatted table directly in the workflow log. No SARIF file is written and no results are uploaded to the Security tab — continuous monitoring across all branches is handled by the dedicated `trivy.yml` workflow (see [Security](#security) below).
+Immediately after the wheel is built, a filesystem scan (`trivy fs .`) checks the repository source for `CRITICAL` Python dependency vulnerabilities and leaked secrets. If anything is found, the pipeline fails before the Docker image is even built, let alone published. This protects PyPI consumers who install the wheel directly and never use the Docker image.
 
 ```yaml
-- name: Trivy vulnerability gate (block on CRITICAL)
+- name: Filesystem vulnerability gate (block on CRITICAL)
+  uses: aquasecurity/trivy-action@master
+  with:
+    scan-type: "fs"
+    scan-ref: "."
+    format: "table"
+    exit-code: "1"
+    ignore-unfixed: true
+    scanners: "vuln,secret"
+    severity: "CRITICAL"
+```
+
+#### Image Gate
+
+After the Docker image is built, an image scan checks the full container — OS packages and installed Python libraries — for `CRITICAL` vulnerabilities. If any unfixed critical CVE is found, the pipeline fails and neither the wheel nor the image is published.
+
+```yaml
+- name: Container vulnerability gate (block on CRITICAL)
   uses: aquasecurity/trivy-action@master
   with:
     image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}"
@@ -202,6 +220,8 @@ Results are rendered as a formatted table directly in the workflow log. No SARIF
     scanners: "vuln"
     severity: "CRITICAL"
 ```
+
+Both gates run unconditionally on every build — PRs, dispatches, and releases alike. Results are rendered as formatted tables in the workflow log. No SARIF files are written; continuous monitoring with SARIF upload is handled by the dedicated `trivy.yml` workflow (see [Security](#security) below).
 
 ### Setting Up Buildx
 
@@ -272,11 +292,11 @@ On release builds (`is_release: true`), the image is pushed to Docker Hub in a s
 
 ## Security
 
-Depsight uses a two-layer security model: continuous vulnerability monitoring via a dedicated workflow, and a blocking release gate inside the build pipeline.
+Depsight uses a two-layer security model: continuous vulnerability monitoring via a dedicated workflow, and blocking vulnerability gates inside the build pipeline.
 
 ### Vulnerability Monitoring
 
-The `trivy.yml` workflow runs independently of the build pipeline. It builds the Docker image locally (never pushed), scans it with Trivy, and always renders findings as a formatted table in the Actions log. In addition, a SARIF scan is run and uploaded to the Security tab for most triggers:
+The `trivy.yml` workflow runs independently of the build pipeline. It performs two scans — a **filesystem scan** of the repository source and an **image scan** of a locally built Docker image (never pushed). Both scans always render findings as a formatted table in the Actions log. In addition, SARIF reports are generated and uploaded to the Security tab for most triggers:
 
 | Trigger | Console output | SARIF | Uploaded to Security tab |
 |---|---|---|---|
@@ -286,12 +306,53 @@ The `trivy.yml` workflow runs independently of the build pipeline. It builds the
 | `workflow_dispatch` on `main` | Yes | Yes | Yes |
 | `workflow_dispatch` on any other branch | Yes | No | No |
 
-The console scan runs unconditionally on every trigger, giving immediate visibility in the Actions log. When SARIF output is also enabled, results are uploaded to the repository's **Security → Code scanning alerts** tab via the CodeQL upload action. This gives maintainers a centralised view of `CRITICAL` and `HIGH` severity vulnerabilities with known fixes directly inside GitHub.
+The console scans run unconditionally on every trigger, giving immediate visibility in the Actions log. When SARIF output is also enabled, results are uploaded to the repository's **Security → Code scanning alerts** tab via the CodeQL upload action. Each scan uploads to a separate `category` (`trivy-filesystem` and `trivy-image`) so findings from both layers are tracked independently.
 
-When triggered manually on a non-`main` branch, the SARIF scan and upload are skipped. This is useful for scanning a feature branch image without polluting the Security tab with in-progress work.
+When triggered manually on a non-`main` branch, the SARIF scans and uploads are skipped. This is useful for scanning a feature branch without polluting the Security tab with in-progress work.
+
+#### Filesystem Scan
+
+The filesystem scan (`trivy fs .`) checks the repository source for Python dependency vulnerabilities and leaked secrets. It runs before the Docker image is built, providing fast feedback without waiting for a container build.
 
 ```yaml
-- name: Run Trivy vulnerability scanner (console)
+- name: Trivy filesystem scan (console)
+  uses: aquasecurity/trivy-action@master
+  with:
+    scan-type: "fs"
+    scan-ref: "."
+    format: "table"
+    exit-code: "0"
+    ignore-unfixed: true
+    scanners: "vuln,secret"
+    severity: "CRITICAL,HIGH"
+
+- name: Trivy filesystem scan (SARIF)
+  if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+  uses: aquasecurity/trivy-action@master
+  with:
+    scan-type: "fs"
+    scan-ref: "."
+    format: "sarif"
+    output: "trivy-fs-results.sarif"
+    exit-code: "0"
+    ignore-unfixed: true
+    scanners: "vuln,secret"
+    severity: "CRITICAL,HIGH"
+
+- name: Upload filesystem scan results to GitHub Security tab
+  if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+  uses: github/codeql-action/upload-sarif@v4
+  with:
+    sarif_file: "trivy-fs-results.sarif"
+    category: "trivy-filesystem"
+```
+
+#### Image Scan
+
+The image scan checks the full container for OS package and library vulnerabilities. It runs after the Docker image is built.
+
+```yaml
+- name: Trivy image scan (console)
   uses: aquasecurity/trivy-action@master
   with:
     image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
@@ -302,24 +363,25 @@ When triggered manually on a non-`main` branch, the SARIF scan and upload are sk
     scanners: "vuln"
     severity: "CRITICAL,HIGH"
 
-- name: Run Trivy vulnerability scanner (SARIF)
+- name: Trivy image scan (SARIF)
   if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
   uses: aquasecurity/trivy-action@master
   with:
     image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
     format: "sarif"
-    output: "trivy-results.sarif"
+    output: "trivy-image-results.sarif"
     exit-code: "0"
     ignore-unfixed: true
     vuln-type: "os,library"
     scanners: "vuln"
     severity: "CRITICAL,HIGH"
 
-- name: Upload Trivy scan results to GitHub Security tab
+- name: Upload image scan results to GitHub Security tab
   if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
   uses: github/codeql-action/upload-sarif@v4
   with:
-    sarif_file: "trivy-results.sarif"
+    sarif_file: "trivy-image-results.sarif"
+    category: "trivy-image"
 ```
 
 ### Security Policy

@@ -24,6 +24,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ── Filesystem scan (source + Python dependencies + secrets) ──
+
+      - name: Trivy filesystem scan (console)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          exit-code: "0"
+          ignore-unfixed: true
+          scanners: "vuln,secret"
+          severity: "CRITICAL,HIGH"
+
+      - name: Trivy filesystem scan (SARIF)
+        if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-fs-results.sarif"
+          exit-code: "0"
+          ignore-unfixed: true
+          scanners: "vuln,secret"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload filesystem scan results to GitHub Security tab
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: "trivy-fs-results.sarif"
+          category: "trivy-filesystem"
+
+      # ── Container image scan (OS packages + installed libraries) ──
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -36,7 +71,7 @@ jobs:
           tags: |
             ${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}
 
-      - name: Run Trivy vulnerability scanner (console)
+      - name: Trivy image scan (console)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
@@ -47,21 +82,22 @@ jobs:
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
 
-      - name: Run Trivy vulnerability scanner (SARIF)
+      - name: Trivy image scan (SARIF)
         if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "${{ vars.DOCKER_REPOSITORY }}:${{ github.sha }}"
           format: "sarif"
-          output: "trivy-results.sarif"
+          output: "trivy-image-results.sarif"
           exit-code: "0"
           ignore-unfixed: true
           vuln-type: "os,library"
           scanners: "vuln"
           severity: "CRITICAL,HIGH"
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload image scan results to GitHub Security tab
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: "trivy-results.sarif"
+          sarif_file: "trivy-image-results.sarif"
+          category: "trivy-image"
