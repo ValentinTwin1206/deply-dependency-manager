@@ -5,8 +5,10 @@ on:
     types: [published]
 
 permissions:
-  contents: write
-
+  contents: write        # Required for managing releases/tags
+  security-events: write # REQUIRED for the called Trivy scan to upload results
+  actions: read
+  
 jobs:
   verify-tag:
     runs-on: ubuntu-latest
