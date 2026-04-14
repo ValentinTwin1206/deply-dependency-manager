@@ -6,8 +6,10 @@ FROM python:${PYTHON_VERSION} AS builder
 
 # Copy uv binary from official image (Faster & more reliable than curl)
 ARG UV_VERSION="0.11.1"
-RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh \
-    | UV_INSTALL_DIR=/usr/local/bin sh
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
 
 WORKDIR /depsight
 
