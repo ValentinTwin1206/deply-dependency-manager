@@ -40,7 +40,6 @@ nav:
           - Agentic Engineering: technical-documentation/development/agentic-engineering.md
       - Integration & Deployment: 
           - Distribution: technical-documentation/integration_and_deployment/distribution.md
-          - Containerization: technical-documentation/integration_and_deployment/containerization.md
           - CI/CD: technical-documentation/integration_and_deployment/ci_cd.md
   - Instructions:
       - Getting Started:
