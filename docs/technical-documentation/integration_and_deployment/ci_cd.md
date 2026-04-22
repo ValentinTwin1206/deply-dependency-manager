@@ -22,7 +22,7 @@ Depsight provides four entry-point workflows that trigger the CI/CD pipeline:
 - **On Pull Request** — quality gate on every PR to `main`; lints, type-checks, tests, and builds the wheel without publishing
 - **On Push** — post-merge guard that re-runs the full pipeline on every push to `main`; never publishes
 - **On Dispatch** — manual trigger for on-demand builds; supports toolchain version selection and optional wheel artifact upload
-- **On Release** — fires on a published GitHub Release; publishes the wheel to PyPI (via OIDC Trusted Publishing) and pushes the Docker image to Docker Hub
+- **On Release** — fires on a published GitHub Release; publishes the wheel to PyPI and pushes the Docker image to Docker Hub
 
 Each responds to a different GitHub event and delegates the heavy lifting to `build.yml` via `workflow_call`. The entry points differ in how they determine version numbers, which inputs they forward, and whether they trigger a release publish.
 
@@ -123,9 +123,9 @@ on:
 
 ### On Release
 
-The `on_release.yml` workflow fires when a GitHub Release is published. It first verifies that the release tag is [PEP 440](https://peps.python.org/pep-0440/) compliant, then calls `build.yml` with `is_release: true`. This flag enables the publish steps that upload the wheel to PyPI and push the Docker image to Docker Hub.
+The `on_release.yml` workflow fires when a GitHub Release is published. It first verifies that the release tag is [PEP 440](https://peps.python.org/pep-0440/) compliant, then calls `build.yml` with `is_release: true`. This flag enables the publish steps that upload the wheel to PyPI and push the Docker image to Docker Hub. The workflow forwards the `PYPI_TOKEN` and `DOCKER_PAT` secrets so that the reusable workflow can authenticate with both registries.
 
-The checkout step pins `ref` to the release tag so the build runs against the exact commit that was tagged, not the current tip of `main`. The workflow grants `id-token: write` at both the top level and on the `call-build` job so the reusable workflow can mint an OIDC token for [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) — no long-lived `PYPI_TOKEN` secret is involved. Only the Docker Hub `DOCKER_PAT` is forwarded as a traditional secret.
+The checkout step pins `ref` to the release tag so the build runs against the exact commit that was tagged, not the current tip of `main`.
 
 ```yaml
 on:
@@ -135,7 +135,6 @@ on:
 permissions:
   actions: read
   contents: write
-  id-token: write
 
 jobs:
   verify-tag:
@@ -147,13 +146,11 @@ jobs:
 
   call-build:
     uses: ./.github/workflows/build.yml
-    permissions:
-      contents: read
-      id-token: write
     with:
       is_release: true
       ...
     secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
       DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
 ```
 
@@ -202,9 +199,8 @@ The workflow accepts the following inputs and secrets:
 | `python_version`     | string    | Python version override — falls back to `.python-version` if omitted |
 | `depsight_version`   | string    | Expected version (validated against `pyproject.toml`) |
 | `upload_artifact`    | boolean   | Attach the wheel as a downloadable workflow artifact |
+| `PYPI_TOKEN`         | secret    | API token for PyPI publishing                        |
 | `DOCKER_PAT`         | secret    | Personal access token for Docker Hub                 |
-
-PyPI authentication is handled by [OIDC Trusted Publishing](https://docs.pypi.org/trusted-publishers/) and requires no secret — the job declares `id-token: write` and `uv publish --trusted-publishing always` exchanges a short-lived GitHub OIDC token for a PyPI upload token at publish time.
 
 ---
 
@@ -307,7 +303,7 @@ After the image is built, a Trivy image scan checks the full container inclduing
 
 ### Publish Wheel to PyPI (release-only)
  
-Triggered only on [release events](#on-release), this step publishes the Depsight wheel to [PyPI](https://pypi.org) using [OIDC Trusted Publishing](https://docs.pypi.org/trusted-publishers/). The `uv build` step runs inside the DevContainer, but `uv publish` runs on the bare GitHub runner where `uv` is not pre-installed. The [`astral-sh/setup-uv`](https://github.com/astral-sh/setup-uv) action installs the pinned version first. The `--trusted-publishing always` flag makes `uv` exchange the job's short-lived GitHub OIDC token (enabled by the `id-token: write` permission) for a one-shot PyPI upload credential — there is no long-lived `PYPI_TOKEN` secret to rotate or leak.
+Triggered only on [release events](#on-release), this step publishes the Depsight wheel to [PyPI](https://pypi.org). The `uv build` step runs inside the DevContainer, but `uv publish` runs on the bare GitHub runner where `uv` is not pre-installed. The [`astral-sh/setup-uv`](https://github.com/astral-sh/setup-uv) action installs the pinned version first, and the `PYPI_TOKEN` secret is passed via `UV_PUBLISH_TOKEN`.
 
 ```yaml
 - name: Install uv
@@ -316,13 +312,12 @@ Triggered only on [release events](#on-release), this step publishes the Depsigh
   with:
     version: ${{ inputs.uv_version }}
 
-- name: Upload wheel to PyPI (OIDC Trusted Publishing)
+- name: Upload wheel to PyPI
   if: ${{ inputs.is_release }}
-  run: uv publish --trusted-publishing always
+  env:
+    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+  run: uv publish
 ```
-
-!!! info "One-time PyPI configuration"
-    Trusted Publishing requires a one-time setup on PyPI: in the project's **Publishing** settings, register a GitHub trusted publisher with the repository owner, repository name, workflow filename (`build.yml`), and environment (leave blank if unused). After that, no secrets need to be stored in GitHub for PyPI authentication.
 
 ### Push Docker Image (release-only)
 

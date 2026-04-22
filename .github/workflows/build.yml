@@ -26,6 +26,9 @@ on:
         type: boolean
         default: false
     secrets:
+      PYPI_TOKEN:
+        description: "PyPI API token for publishing"
+        required: false
       DOCKER_PAT:
         description: "Docker Hub personal access token"
         required: false
@@ -38,9 +41,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Required for PyPI Trusted Publishing (OIDC) on release runs.
-      # Ignored by non-release runs.
-      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -172,9 +172,11 @@ jobs:
         with:
           version: ${{ inputs.uv_version }}
 
-      - name: Upload wheel to PyPI (OIDC Trusted Publishing)
+      - name: Upload wheel to PyPI
         if: ${{ inputs.is_release }}
-        run: uv publish --trusted-publishing always
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: uv publish
 
       - name: Log in to Docker Hub
         if: ${{ inputs.is_release }}
