@@ -204,3 +204,71 @@ class TestUVPluginCollect:
         plugin.collect(str(uv_project_full))
 
         assert len(plugin.dependencies) > 0
+
+
+class TestUVPluginPylock:
+    """UVPlugin.collect() with pylock.toml (PEP 751)."""
+
+    def test_default_file_is_uv_lock(self):
+        """Default file remains uv.lock for backwards compatibility."""
+        plugin = UVPlugin()
+        assert plugin.default_file == "uv.lock"
+
+    def test_supported_files_include_pylock(self):
+        """pylock.toml is listed in dependency_files."""
+        plugin = UVPlugin()
+        assert "pylock.toml" in plugin.dependency_files
+
+    def test_collect_pylock_names(self, uv_project_pylock: Path):
+        """pylock.toml packages are collected by name."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_pylock, file="pylock.toml")
+
+        names = {d.name for d in plugin.dependencies}
+        assert names == {"click", "rich", "markdown-it-py"}
+
+    def test_collect_pylock_versions(self, uv_project_pylock: Path):
+        """pylock.toml versions are captured."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_pylock, file="pylock.toml")
+
+        by_name = {d.name: d for d in plugin.dependencies}
+        assert by_name["click"].version == "8.3.1"
+        assert by_name["rich"].version == "13.9.4"
+
+    def test_collect_pylock_registry(self, uv_project_pylock: Path):
+        """pylock.toml ``index`` populates the registry field."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_pylock, file="pylock.toml")
+
+        click_dep = next(d for d in plugin.dependencies if d.name == "click")
+        assert click_dep.registry == "https://pypi.org/simple"
+
+    def test_collect_pylock_tool_name(self, uv_project_pylock: Path):
+        """All pylock dependencies are tagged with the plugin name."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_pylock, file="pylock.toml")
+
+        assert all(d.tool_name == "uv" for d in plugin.dependencies)
+
+    def test_collect_pylock_category(self, uv_project_pylock: Path):
+        """PEP 751 has no dev/prod split, everything is prod."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_pylock, file="pylock.toml")
+
+        assert all(d.category == "prod" for d in plugin.dependencies)
+
+    def test_collect_rejects_unknown_file(self, uv_project_full: Path):
+        """Unsupported file names raise ``ValueError``."""
+        import pytest as _pytest
+
+        plugin = UVPlugin()
+        with _pytest.raises(ValueError, match="Unsupported file"):
+            plugin.collect(uv_project_full, file="requirements.txt")
+
+    def test_collect_pylock_missing(self, uv_project_missing: Path):
+        """Missing pylock.toml yields zero dependencies."""
+        plugin = UVPlugin()
+        plugin.collect(uv_project_missing, file="pylock.toml")
+
+        assert plugin.dependencies == []

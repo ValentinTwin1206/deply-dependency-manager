@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import tomllib
 
 from pathlib import Path
@@ -6,9 +8,12 @@ from pathlib import Path
 from depsight.core.plugins.base import BasePlugin
 from depsight.core.plugins.dependency import Dependency, packageType
 
-
 class UVPlugin(BasePlugin):
-    """Plugin for **uv**."""
+    """Plugin for **uv**.
+
+    Supports both the legacy `uv.lock` file and the PEP 751
+    `pylock.toml` interoperable lockfile format.
+    """
 
     def __init__(self) -> None:
         self.dependencies: list[Dependency] = []
@@ -19,7 +24,12 @@ class UVPlugin(BasePlugin):
 
     @property
     def dependency_files(self) -> tuple[str, ...]:
-        return ("uv.lock",)
+        return ("uv.lock", "pylock.toml")
+
+    @property
+    def default_file(self) -> str:
+        """Use `uv.lock` by default; `pylock.toml` is opt-in via `--file`."""
+        return "uv.lock"
 
     @staticmethod
     def _load_dependency_files(project_dir: Path, filename: str) -> tuple[dict, Path] | None:
@@ -44,25 +54,46 @@ class UVPlugin(BasePlugin):
     #
     # METHODS
     # # # # # # #
-    def collect(self, project_dir: str | Path) -> None:
-        """Parses `uv.lock` and populate `self.dependencies`.
+    def collect(self, project_dir: str | Path, file: str | None = None) -> None:
+        """Parse a uv lockfile and populate `self.dependencies`.
 
-        Reads the lockfile via :mod:`tomllib`, extracts every locked
-        package with its version and registry source, then classifies
-        each dependency as *prod* or *dev* based on the
-        editable project block.
+        Parameters
+        ----------
+        project_dir - Absolute path to the project root to scan.
+
+        file - Optional lockfile basename to parse. Must be one of
+            :attr:`dependency_files`. When `None`, :attr:`default_file`
+            is used.
+
+        Raises
+        ------
+        ValueError
+            When *file* is not part of :attr:`dependency_files`.
         """
+        target = file or self.default_file
+        if target not in self.dependency_files:
+            raise ValueError(
+                f"Unsupported file '{target}' for plugin '{self.name}'. "
+                f"Supported: {', '.join(self.dependency_files)}"
+            )
+
         project_dir = Path(project_dir)
-        result = self._load_dependency_files(
-            project_dir, self.dependency_files[0],
-        )
+
+        result = self._load_dependency_files(project_dir, target)
         if result is None:
             self.dependencies = []
             return
 
         data, lockfile_path = result
-        lockfile_str = str(lockfile_path)
 
+        if target == "pylock.toml":
+            self.dependencies = self._parse_pylock(data, lockfile_path)
+        else:
+            self.dependencies = self._parse_uv_lock(data, lockfile_path)
+
+    def _parse_uv_lock(self, data: dict, lockfile_path: Path) -> list[Dependency]:
+        """Parse the uv-specific `uv.lock` format."""
+        lockfile_str = str(lockfile_path)
         packages: list[dict] = data.get("package", [])
 
         # Build name → version and name → registry lookups
@@ -86,7 +117,7 @@ class UVPlugin(BasePlugin):
 
         # No editable block → every locked package counts as runtime
         if project_block is None:
-            self.dependencies = [
+            return [
                 Dependency(
                     name=n,
                     version=v,
@@ -96,7 +127,6 @@ class UVPlugin(BasePlugin):
                 )
                 for n, v in sorted(locked.items())
             ]
-            return
 
         # Parse runtime deps
         runtime_names = [
@@ -109,12 +139,12 @@ class UVPlugin(BasePlugin):
         non_runtime_names: set[str] = set()
 
         # [project.optional-dependencies]  →  uv.lock optional-dependencies
-        for _group, deps in project_block.get("optional-dependencies", {}).items():
-            non_runtime_names.update(dep["name"] for dep in deps)
+        for _group, group_deps in project_block.get("optional-dependencies", {}).items():
+            non_runtime_names.update(dep["name"] for dep in group_deps)
 
         # PEP 735 [dependency-groups]  →  uv.lock dev-dependencies
-        for _group, deps in project_block.get("dev-dependencies", {}).items():
-            non_runtime_names.update(dep["name"] for dep in deps)
+        for _group, group_deps in project_block.get("dev-dependencies", {}).items():
+            non_runtime_names.update(dep["name"] for dep in group_deps)
 
         # Parse version constraints from metadata.requires-dist
         metadata = project_block.get("metadata", {})
@@ -142,7 +172,7 @@ class UVPlugin(BasePlugin):
         direct_names: set[str] = set(runtime_names) | non_runtime_names
 
         # Build structured dependency list
-        self.dependencies = [
+        deps: list[Dependency] = [
             Dependency(
                 name=dep_name,
                 version=locked.get(dep_name),
@@ -159,7 +189,7 @@ class UVPlugin(BasePlugin):
         # Append transitive dependencies (locked but not declared directly)
         for dep_name in sorted(locked):
             if dep_name not in category_map and dep_name != project_block.get("name"):
-                self.dependencies.append(
+                deps.append(
                     Dependency(
                         name=dep_name,
                         version=locked[dep_name],
@@ -170,3 +200,49 @@ class UVPlugin(BasePlugin):
                         is_transitive=True,
                     )
                 )
+
+        return deps
+
+    def _parse_pylock(self, data: dict, lockfile_path: Path) -> list[Dependency]:
+        """Parse a PEP 751 `pylock.toml` file.
+
+        PEP 751 defines a minimal interoperable lockfile format. Packages
+        are listed under `[[packages]]` with `name`, `version` and
+        an optional `index` URL. The spec itself does not distinguish
+        direct from transitive or prod from dev dependencies, so every
+        entry is reported as `prod` with `is_transitive=False`.
+
+        Parameters
+        ----------
+        data - Parsed TOML content of the `pylock.toml` file.
+
+        lockfile_path - Absolute path to the lockfile (stored on each
+            produced :class:`Dependency`).
+
+        Returns
+        -------
+        list[Dependency]
+            Dependencies listed in the lockfile, sorted by name.
+        """
+        lockfile_str = str(lockfile_path)
+        packages: list[dict] = data.get("packages", [])
+
+        deps: list[Dependency] = []
+        for pkg in packages:
+            pkg_name = pkg.get("name")
+            if not pkg_name:
+                continue
+            deps.append(
+                Dependency(
+                    name=pkg_name,
+                    version=pkg.get("version"),
+                    tool_name=self.name,
+                    registry=pkg.get("index"),
+                    file=lockfile_str,
+                    category="prod",
+                    is_transitive=False,
+                )
+            )
+
+        deps.sort(key=lambda d: d.name)
+        return deps

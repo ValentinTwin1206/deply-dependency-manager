@@ -41,6 +41,13 @@ def uv_project_missing(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@pytest.fixture()
+def uv_project_pylock(tmp_path: Path) -> Path:
+    """Fake project with a PEP 751 `pylock.toml` file."""
+    shutil.copy(FIXTURES_DIR / "pylock_full.toml", tmp_path / "pylock.toml")
+    return tmp_path
+
+
 #
 # VSC-PLUGIN
 # # # # # # # #

@@ -1,0 +1,18 @@
+lock-version = "1.0"
+requires-python = ">=3.12"
+created-by = "uv"
+
+[[packages]]
+name = "click"
+version = "8.3.1"
+index = "https://pypi.org/simple"
+
+[[packages]]
+name = "rich"
+version = "13.9.4"
+index = "https://pypi.org/simple"
+
+[[packages]]
+name = "markdown-it-py"
+version = "3.0.0"
+index = "https://pypi.org/simple"

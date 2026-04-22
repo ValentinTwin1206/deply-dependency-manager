@@ -302,10 +302,24 @@ The `hello` project can further be extended by adding runtime dependencies by us
 
 === "`poetry`"
 
-    Following command installs the `click` library:
-    
+    Enter the project directory:
+
     ```bash
     cd my-poetry-package
+    ```
+
+    Configure Poetry to create the virtual environment inside the project directory (as `.venv/`) rather than in its global cache:
+
+    ```bash
+    poetry config virtualenvs.in-project true --local
+    ```
+
+    !!! info "Default virtualenv location"
+        By default, Poetry creates virtual environments under `~/.cache/pypoetry/virtualenvs/` on Linux (and the platform-equivalent cache directory on macOS and Windows), not in the project folder. The `--local` flag above writes the setting to a `poetry.toml` next to `pyproject.toml`, so the in-project layout applies only to this project.
+
+    Install the `click` library:
+
+    ```bash
     poetry add click
     ```
 
