@@ -7,7 +7,13 @@ from rich.console import Console
 # own imports
 from depsight import __version__
 from depsight.core.dispatcher import dispatch_command
-from depsight.utils.constants import APP_BANNER, COLOR_DIM_ORANGE, COLOR_PEACH, SUPPORTED_PLUGINS
+from depsight.utils.constants import (
+    APP_BANNER,
+    COLOR_DIM_ORANGE,
+    COLOR_PEACH,
+    PLUGIN_FILES,
+    SUPPORTED_PLUGINS,
+)
 
 # rich-click styling
 click.rich_click.USE_RICH_MARKUP = True
@@ -67,6 +73,8 @@ def _register_plugin(plugin_name: str):
         ctx.ensure_object(dict)
         ctx.obj["plugin_name"] = plugin_name
 
+    # Supported dependency files discovered at import time.
+    _supported_files, _default_file = PLUGIN_FILES[plugin_name]
 
     #
     # SCAN COMMAND
@@ -79,6 +87,14 @@ def _register_plugin(plugin_name: str):
         help="Path to the project."
     )
     @click.option(
+        "--file",
+        "file",
+        type=click.Choice(_supported_files),
+        default=None,
+        show_default=False,
+        help=f"Dependency file to scan (DEFAULT: {_default_file}). "
+    )
+    @click.option(
         "--verbose",
         is_flag=True,
         help="Enable verbose logging."
@@ -89,13 +105,14 @@ def _register_plugin(plugin_name: str):
         help="Export scan results to a CSV file."
     )
     @click.pass_context
-    def scan(ctx, project_dir, verbose, as_csv):
+    def scan(ctx, project_dir, file, verbose, as_csv):
         """Scan project dependencies using the selected plugin."""
         if not _confirm_banner():
             raise SystemExit(0)
         options = {
             "plugin_name": ctx.obj["plugin_name"],
             "project_dir": project_dir,
+            "file": file,
             "verbose": verbose,
             "as_csv": as_csv,
         }

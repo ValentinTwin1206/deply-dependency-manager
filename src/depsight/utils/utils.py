@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 from typing import Callable
 
-
 def resolve_user_dir(app_name: str, *, dev_mode: bool) -> Path:
     """Return the user-level base directory for Depsight.
 
@@ -109,5 +108,36 @@ def discover_plugins(app_name: str) -> dict:
             registry[ep.name] = plugin_cls
         except Exception:
             raise SystemExit(f"Failed to load plugin '{ep.name}'.")
+
+    return registry
+
+
+def discover_plugin_files(plugin_registry: dict[str, type]) -> dict[str, tuple[tuple[str, ...], str]]:
+    """Build a registry of supported dependency files per plugin.
+
+    Each class in *plugin_registry* is instantiated once and queried for
+    :attr:`~depsight.core.plugins.base.BasePlugin.dependency_files` and
+    :attr:`~depsight.core.plugins.base.BasePlugin.default_file`. This
+    allows the CLI layer to build the `--file` option without
+    re-instantiating plugins on every invocation.
+
+    Parameters
+    ----------
+    plugin_registry - Mapping of plugin name to plugin class, as produced
+        by :func:`discover_plugins`.
+
+    Returns
+    -------
+    dict[str, tuple[tuple[str, ...], str]]
+        Mapping of plugin name to `(supported_files, default_file)`.
+    """
+    registry: dict[str, tuple[tuple[str, ...], str]] = {}
+
+    for name, plugin_cls in plugin_registry.items():
+        try:
+            instance = plugin_cls()
+            registry[name] = (instance.dependency_files, instance.default_file)
+        except Exception:
+            raise SystemExit(f"Failed to inspect plugin '{name}'.")
 
     return registry

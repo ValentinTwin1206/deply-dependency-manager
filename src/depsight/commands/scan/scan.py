@@ -11,7 +11,7 @@ from depsight.utils.constants import COLOR_DIM_ORANGE, COLOR_PEACH, USER_DATA_DI
 logger = logging.getLogger(__name__)
 
 
-def scan_handler(plugin, project_dir: str | Path, *, as_csv: bool = False):
+def scan_handler(plugin, project_dir: str | Path, *, file: str | None = None, as_csv: bool = False):
     """Scan a project for dependencies using the given plugin.
 
     Invokes :pymethod:`plugin.collect` on *project_dir* to populate
@@ -23,19 +23,27 @@ def scan_handler(plugin, project_dir: str | Path, *, as_csv: bool = False):
     
     project_dir - Absolute path to the project root to scan.
 
+    file - Optional dependency-file basename to scan. When ``None``,
+        the plugin's :attr:`default_file` is used.
+
     as_csv - When `True`, export the results to a CSV file.
     """
 
     console = Console()
 
-    logger.info("Starting scan in '%s' with plugin '%s'", project_dir, plugin.name)
+    target = file or plugin.default_file
+    logger.info("Starting scan in '%s' with plugin '%s' (file='%s')", project_dir, plugin.name, target)
     console.print()
-    console.print(f"Scanning [{COLOR_PEACH}]{project_dir}[/{COLOR_PEACH}] using [{COLOR_DIM_ORANGE}]{plugin.name}[/{COLOR_DIM_ORANGE}]")
+    console.print(
+        f"Scanning [{COLOR_PEACH}]{project_dir}[/{COLOR_PEACH}] "
+        f"using [{COLOR_DIM_ORANGE}]{plugin.name}[/{COLOR_DIM_ORANGE}] "
+        f"→ [{COLOR_PEACH}]{target}[/{COLOR_PEACH}]"
+    )
     console.print()
 
     # Collect dependencies using the plugin's collect() method
-    logger.debug("Calling plugin.collect('%s')", project_dir)
-    plugin.collect(project_dir)
+    logger.debug("Calling plugin.collect('%s', file='%s')", project_dir, target)
+    plugin.collect(project_dir, file=target)
     logger.debug("Plugin returned %d dependency(ies)", len(plugin.dependencies))
 
     if not plugin.dependencies:

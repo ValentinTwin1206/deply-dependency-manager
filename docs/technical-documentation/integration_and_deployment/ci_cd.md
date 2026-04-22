@@ -17,26 +17,79 @@ The Depsight project uses [GitHub Actions](https://docs.github.com/en/actions) f
 
 ## GitHub Actions Workflows
 
-Depsight provides three entry-point workflows that trigger the CI/CD pipeline:
+Depsight provides four entry-point workflows that trigger the CI/CD pipeline:
 
 - **On Pull Request** — quality gate on every PR to `main`; lints, type-checks, tests, and builds the wheel without publishing
+- **On Push** — post-merge guard that re-runs the full pipeline on every push to `main`; never publishes
 - **On Dispatch** — manual trigger for on-demand builds; supports toolchain version selection and optional wheel artifact upload
 - **On Release** — fires on a published GitHub Release; publishes the wheel to PyPI and pushes the Docker image to Docker Hub
 
 Each responds to a different GitHub event and delegates the heavy lifting to `build.yml` via `workflow_call`. The entry points differ in how they determine version numbers, which inputs they forward, and whether they trigger a release publish.
 
+!!! note "Why separate `On Push` and `On Release`?"
+    Triggering publishing on a push to `main` would couple every merge to a release, force version bumps to precede each merge, and break the tag-to-artifact mapping. Using `release: [published]` ties each publish to an immutable, human-authored git tag — the single source of truth for shipped artifacts. `On Push` complements it by re-running CI on `main` HEAD after every merge, catching regressions that slip past pre-merge checks (for example, from squash-merges or direct pushes).
+
 ### On Pull Request
 
-The `on_pullrequest.yml` workflow runs automatically when a pull request is opened or updated against the `main` branch. It parses the current version from `pyproject.toml` and calls `build.yml` with `is_release: false`, which means the pipeline lints, type-checks, tests, and builds the wheel but does not publish anything. Changes to `README.md` and the `docs/` folder are excluded via `paths-ignore` so that documentation-only PRs do not trigger a full build.
+The `on_pullrequest.yml` workflow runs automatically when a pull request is opened or updated against the `main` branch. It calls `build.yml` with `is_release: false`, which means the pipeline lints, type-checks, tests, and builds the wheel but does not publish anything.
+
+Documentation-only PRs are detected at the job level rather than via `paths-ignore`. A dedicated `changes` job uses [`dorny/paths-filter`](https://github.com/dorny/paths-filter) to decide whether the diff touches anything outside `README.md`, `docs/**`, and `mkdocs.yml`. If it does not, the `parse-version` and `call-build` jobs are skipped.
+
+```yaml
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            code:
+              - '!README.md'
+              - '!docs/**'
+              - '!mkdocs.yml'
+
+  call-build:
+    needs: [changes, parse-version]
+    if: needs.changes.outputs.code == 'true'
+    uses: ./.github/workflows/build.yml
+    ...
+```
+
+A trailing `ci-result` sentinel job always runs and reports the aggregated outcome of `call-build`. This job is the one configured as a **required status check** in branch protection. On docs-only PRs, `call-build` is skipped and `ci-result` reports success; on code PRs, `ci-result` mirrors the build outcome. Without this shim, a docs-only PR would leave the required check pending forever because `paths-ignore` suppresses the workflow status entirely.
+
+```yaml
+  ci-result:
+    needs: [call-build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          result="${{ needs.call-build.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+            exit 1
+          fi
+```
+
+### On Push
+
+The `on_push.yml` workflow runs on every push to `main` that touches anything outside `README.md`, `docs/**`, and `mkdocs.yml`. It is identical in structure to `On Pull Request` but uses a simple `paths-ignore` filter because there is no required-check status to keep green on merge commits. Like the PR workflow, it calls `build.yml` with `is_release: false` — nothing is published.
+
+This workflow guards `main` HEAD against regressions that can slip past PR review, such as out-of-order merges, branch-protection bypasses, or a stale PR merged without re-running CI.
 
 ```yaml
 on:
-  pull_request:
+  push:
     branches:
       - main
     paths-ignore:
       - 'README.md'
       - 'docs/**'
+      - 'mkdocs.yml'
 ```
 
 ### On Dispatch
@@ -70,12 +123,35 @@ on:
 
 ### On Release
 
-The `on_release.yml` workflow fires when a GitHub Release is published. It first verifies that the release tag is [PEP 440](https://peps.python.org/pep-0440/) compliant, then calls `build.yml` with `is_release: true`. This flag enables the publish steps that upload the wheel to PyPI and push the Docker image to Docker Hub. The workflow also forwards the `PYPI_TOKEN` and `DOCKER_PAT` secrets so that the reusable workflow can authenticate with both registries.
+The `on_release.yml` workflow fires when a GitHub Release is published. It first verifies that the release tag is [PEP 440](https://peps.python.org/pep-0440/) compliant, then calls `build.yml` with `is_release: true`. This flag enables the publish steps that upload the wheel to PyPI and push the Docker image to Docker Hub. The workflow forwards the `PYPI_TOKEN` and `DOCKER_PAT` secrets so that the reusable workflow can authenticate with both registries.
+
+The checkout step pins `ref` to the release tag so the build runs against the exact commit that was tagged, not the current tip of `main`.
 
 ```yaml
 on:
   release:
     types: [published]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  verify-tag:
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      ...
+
+  call-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      is_release: true
+      ...
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
 ```
 
 ### Reusable Build Workflow
@@ -86,6 +162,7 @@ The `build.yml` workflow is the single source of truth for all build, test, and 
 flowchart LR
   subgraph Triggers
     PR["on_pullrequest.yml"]
+    PU["on_push.yml"]
     DI["on_dispatch.yml"]
     RE["on_release.yml"]
   end
@@ -108,6 +185,7 @@ flowchart LR
   end
 
   PR -- "is_release: false" --> V
+  PU -- "is_release: false" --> V
   DI -- "is_release: false" --> V
   RE -- "is_release: true" --> V
 ```
@@ -243,7 +321,7 @@ Triggered only on [release events](#on-release), this step publishes the Depsigh
 
 ### Push Docker Image (release-only)
 
-Triggered only on [release events](#on-release), this step pushes the Depsight image to [Docker Hub](https://hub.docker.com). The workflow first authenticates using a username stored as a repository variable and a PAT stored as a repository secret. Keeping the push separate from the build ensures every PR and dispatch run still validates the `Dockerfile` while only tagged releases are published.
+Triggered only on [release events](#on-release), this step pushes the Depsight image to [Docker Hub](https://hub.docker.com). Because the image was already built earlier in the same job with `load: true` — so the container vulnerability gate could scan it — it is already present in the runner's local Docker daemon under both the version and `latest` tags. The release step therefore authenticates and calls `docker push` directly, avoiding a second full `docker build` run.
 
 ```yaml
 - name: Log in to Docker Hub
@@ -255,16 +333,9 @@ Triggered only on [release events](#on-release), this step pushes the Depsight i
 
 - name: Push Docker image
   if: ${{ inputs.is_release }}
-  uses: docker/build-push-action@v6
-  with:
-    context: .
-    push: true
-    build-args: |
-      PYTHON_VERSION=${{ inputs.python_version }}
-      UV_VERSION=${{ inputs.uv_version }}
-    tags: |
-      ${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}
-      ${{ vars.DOCKER_REPOSITORY }}:latest
+  run: |
+    docker push ${{ vars.DOCKER_REPOSITORY }}:${{ inputs.depsight_version }}
+    docker push ${{ vars.DOCKER_REPOSITORY }}:latest
 ```
 
 !!! info "Docker Hub Credentials"

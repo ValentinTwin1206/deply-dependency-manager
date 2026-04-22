@@ -41,6 +41,7 @@ def dispatch_command(command: str, options: dict):
     # Destructure options
     plugin_name: str = options["plugin_name"]
     project_dir = Path(options["project_dir"]).resolve()
+    file: str | None = options.get("file")
     verbose: bool = options.get("verbose", False)
     as_csv: bool = options.get("as_csv", False)
 
@@ -55,7 +56,7 @@ def dispatch_command(command: str, options: dict):
 
         # Execute public handler under '/commands/<command>/<command>.py'
         logger.info(f"Running handler for command '{command}'...")
-        handler(plugin, project_dir, as_csv=as_csv)
+        handler(plugin, project_dir, file=file, as_csv=as_csv)
 
         logger.info(f"Command '{command}' executed successfully. Terminating with exit code 0.")
         return 0

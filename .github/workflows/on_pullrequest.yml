@@ -4,21 +4,39 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
 
 permissions:
   actions: read
   contents: read
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect non-docs changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            code:
+              - '!README.md'
+              - '!docs/**'
+              - '!mkdocs.yml'
+
   parse-version:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.versions.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Parse version
         id: versions
         run: |
@@ -26,9 +44,25 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   call-build:
-    needs: parse-version
+    needs: [changes, parse-version]
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/build.yml
     with:
       is_release: false
       uv_version: "0.11.1"
       depsight_version: ${{ needs.parse-version.outputs.version }}
+
+  ci-result:
+    # Sentinel job: always reports a status so branch-protection "required
+    # checks" stay green on docs-only PRs where call-build is skipped.
+    needs: [call-build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report build result
+        run: |
+          result="${{ needs.call-build.result }}"
+          echo "call-build result: $result"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+            exit 1
+          fi

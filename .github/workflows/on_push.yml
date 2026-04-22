@@ -1,0 +1,36 @@
+name: On Push
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'mkdocs.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  parse-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse version
+        id: versions
+        run: |
+          version=$(grep '^version' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  call-build:
+    needs: parse-version
+    uses: ./.github/workflows/build.yml
+    with:
+      is_release: false
+      uv_version: "0.11.1"
+      depsight_version: ${{ needs.parse-version.outputs.version }}

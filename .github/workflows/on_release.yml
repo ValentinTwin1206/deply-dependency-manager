@@ -7,7 +7,7 @@ on:
 permissions:
   actions: read
   contents: write
-  
+
 jobs:
   verify-tag:
     runs-on: ubuntu-latest
@@ -15,6 +15,10 @@ jobs:
       depsight_version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Pin the checkout to the exact release tag for clarity and to
+          # guard against main drifting between tag creation and publish.
+          ref: ${{ github.event.release.tag_name }}
       - id: check
         env:
           TAG: ${{ github.event.release.tag_name }}

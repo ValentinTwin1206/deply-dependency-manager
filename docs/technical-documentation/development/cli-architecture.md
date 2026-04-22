@@ -272,11 +272,38 @@ class BasePlugin(ABC):
     @abstractmethod
     def name(self) -> str: ...
 
+    @property
     @abstractmethod
-    def collect(self, path: str | Path) -> None: ...
+    def dependency_files(self) -> tuple[str, ...]: ...
+
+    @property
+    def default_file(self) -> str:
+        """Filename used by ``collect()`` when ``--file`` is omitted.
+
+        Defaults to the first entry of ``dependency_files``; plugins may
+        override this to prefer a different file.
+        """
+        return self.dependency_files[0]
+
+    @abstractmethod
+    def collect(self, path: str | Path, file: str | None = None) -> None: ...
 
     def export(self, project_dir: str | Path, output_dir: str | Path) -> Path: ...
 ```
+
+#### Selecting a Dependency File
+
+A single package manager often supports more than one lockfile format. The `uv` plugin, for example, reads both the native `uv.lock` and the PEP 751 interoperable `pylock.toml`. Rather than hard-coding a single filename, plugins expose every supported file via `dependency_files` and declare a preferred one via `default_file`. The CLI surfaces this through a `--file` option whose allowed values are derived from the plugin itself:
+
+```bash
+# Scans uv.lock (the plugin default)
+depsight uv scan --project-dir ./my-app
+
+# Opts into the PEP 751 interoperable lockfile
+depsight uv scan --project-dir ./my-app --file pylock.toml
+```
+
+At registration time, the CLI instantiates each plugin to read its `dependency_files` tuple and pins the `--file` option to a `click.Choice(...)` built from that tuple. The chosen filename is forwarded to `plugin.collect(path, file=...)`, where the plugin routes to the matching parser. Adding a new file format is therefore a single-plugin change: extend `dependency_files`, add a parser method, and the CLI automatically exposes the new value.
 
 ### Dataclass Pattern
 

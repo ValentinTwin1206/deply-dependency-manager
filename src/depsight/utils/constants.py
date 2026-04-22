@@ -7,7 +7,13 @@ from importlib.metadata import metadata
 from pathlib import Path
 
 # own imports
-from depsight.utils.utils import discover_commands, discover_plugins, resolve_user_dir, resolve_output_dir
+from depsight.utils.utils import (
+    discover_commands,
+    discover_plugin_files,
+    discover_plugins,
+    resolve_output_dir,
+    resolve_user_dir,
+)
 
 #
 # APP
@@ -57,4 +63,5 @@ APP_BANNER: str = f"""
 # CORE RESOURCES
 # # # # # # # #
 SUPPORTED_PLUGINS: dict = discover_plugins(APP_NAME)
+PLUGIN_FILES: dict[str, tuple[tuple[str, ...], str]] = discover_plugin_files(SUPPORTED_PLUGINS)
 COMMANDS_REGISTRY: dict = discover_commands(COMMANDS_DIR)

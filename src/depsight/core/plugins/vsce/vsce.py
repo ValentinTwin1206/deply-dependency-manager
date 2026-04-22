@@ -96,10 +96,31 @@ class VSCEPlugin(BasePlugin):
     #
     # METHODS
     # # # # # # #
-    def collect(self, project_dir: str | Path) -> None:
-        """Discover `devcontainer.json` files and collect VS Code extensions."""
+    def collect(self, project_dir: str | Path, file: str | None = None) -> None:
+        """Discover `devcontainer.json` files and collect VS Code extensions.
+
+        Parameters
+        ----------
+        project_dir - Absolute path to the project root to scan.
+
+        file - Optional basename of the file to parse. Must be one of
+            :attr:`dependency_files`. When ``None``, :attr:`default_file`
+            is used.
+
+        Raises
+        ------
+        ValueError
+            When *file* is not part of :attr:`dependency_files`.
+        """
+        target = file or self.default_file
+        if target not in self.dependency_files:
+            raise ValueError(
+                f"Unsupported file '{target}' for plugin '{self.name}'. "
+                f"Supported: {', '.join(self.dependency_files)}"
+            )
+
         project_dir = Path(project_dir)
-        paths = self._load_dependency_files(project_dir, self.dependency_files[0])
+        paths = self._load_dependency_files(project_dir, target)
 
         results: list[Dependency] = []
         for dc_path in paths:

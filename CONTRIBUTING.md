@@ -118,6 +118,7 @@ Use this to publish an official versioned build. The wheel is automatically atta
     - `.devcontainer/Dockerfile`
     - `.github/workflows/on_dispatch.yml`
     - `.github/workflows/on_pullrequest.yml`
+    - `.github/workflows/on_push.yml`
     - `.github/workflows/on_release.yml`
     - `Dockerfile`
 - To update `python` to a newer version, set the dedicated version in `.python-version`
