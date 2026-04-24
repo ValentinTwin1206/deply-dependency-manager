@@ -466,6 +466,6 @@ Each alert includes the CVE identifier, the affected package, the installed and 
 ![CVE alert detail view](../../images/cve_alert.png)
 
 !!! info "Resolving the CVE"
-    The runtime stage of the `Dockerfile` initially did not run `apt-get update && apt-get upgrade`, leaving OS packages at the version baked into the base image. Adding these two commands to the [runtime](./containerization.md#runtime-stage) stage ensured that the latest security patches were applied during the image build, which resolved the CVE.
+    The runtime stage of the `Dockerfile` initially did not run `apt-get update && apt-get upgrade`, leaving OS packages at the version baked into the base image. Adding these two commands to the [runtime](./distribution.md#runtime-stage) stage ensured that the latest security patches were applied during the image build, which resolved the CVE.
 
 The two scan categories (`trivy-filesystem` and `trivy-image`) are tracked independently, so findings from Python dependency CVEs and OS-level vulnerabilities are separated and can be filtered individually in the Security tab.
