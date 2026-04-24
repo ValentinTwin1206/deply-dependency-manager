@@ -40,3 +40,9 @@ class TestPluginFactoryCreate:
         """Every created plugin exposes a callable `collect` method."""
         plugin = PluginFactory.create("uv")
         assert callable(getattr(plugin, "collect", None))
+
+    def test_created_plugin_default_file_is_supported(self):
+        """Every created plugin declares a supported default file."""
+        for plugin_name in ("uv", "vsce"):
+            plugin = PluginFactory.create(plugin_name)
+            assert plugin.default_file in plugin.dependency_files

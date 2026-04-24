@@ -5,7 +5,12 @@ on:
     branches:
       - main
     paths-ignore:
+      - '.github/copilot-instructions.md'
+      - 'CLAUDE.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
       - 'README.md'
+      - 'SECURITY.md'
       - 'docs/**'
       - 'mkdocs.yml'
 

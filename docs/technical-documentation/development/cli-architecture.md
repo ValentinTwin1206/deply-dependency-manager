@@ -260,7 +260,7 @@ flowchart LR
 
 #### Plugin Contract
 
-Every plugin must satisfy a contract so the application can call it uniformly. Depsight defines this contract as an **Abstract Base Class** (ABC). Subclasses must implement `name` and `collect`. Otherwise, the Python interpreter will raise a `TypeError` at instantiation time if either is missing. The `export` method has a shared concrete implementation in `BasePlugin` that all plugins inherit for free:
+Every plugin must satisfy a contract so the application can call it uniformly. Depsight defines this contract as an **Abstract Base Class** (ABC). Subclasses must implement `name`, `dependency_files`, `default_file`, and `collect`. Otherwise, the Python interpreter will raise a `TypeError` at instantiation time if any of them is missing. The `export` method has a shared concrete implementation in `BasePlugin` that all plugins inherit for free:
 
 ```python
 from abc import ABC, abstractmethod
@@ -277,13 +277,14 @@ class BasePlugin(ABC):
     def dependency_files(self) -> tuple[str, ...]: ...
 
     @property
+    @abstractmethod
     def default_file(self) -> str:
-        """Filename used by ``collect()`` when ``--file`` is omitted.
+        """Filename used by `collect()` when `--file` is omitted.
 
-        Defaults to the first entry of ``dependency_files``; plugins may
-        override this to prefer a different file.
+        Must be one of the entries in `dependency_files`. Plugins are
+        required to declare this explicitly so there is no implicit
+        fallback when multiple lockfile formats are supported.
         """
-        return self.dependency_files[0]
 
     @abstractmethod
     def collect(self, path: str | Path, file: str | None = None) -> None: ...

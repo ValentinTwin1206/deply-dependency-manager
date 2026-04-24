@@ -7,7 +7,7 @@
 ## Stack
 
 - **Python**: `>=3.12` — Use `from __future__ import annotations` in every module.
-- **Build System**: `hatchling` (via `uv build`); strictly avoid `setuptools` or `setup.py`.
+- **Build System**: `uv` (via `uv build`); strictly avoid `setuptools` or `setup.py`.
 - **Lint/Format**: `ruff check src/ tests/`
 - **Type Checking**: `mypy src/`
 - **Testing**: `pytest tests/ -v` (Use fixtures and `pathlib.Path` for all file-based mocks).
@@ -43,7 +43,10 @@ All plugins must reside in `src/depsight/core/plugins/<name>/<name>.py`.
     1. Standard Library
     2. Third-party (Rich, Click, Textual)
     3. `# local imports` (use absolute paths: `from depsight.core...`)
+- **Constants**: Define global constant values in `constants.py`.
+- **Reusable Modules**: Implement reusable shared helpers in `utils.py`.
 - **Paths**: Use `pathlib.Path` exclusively. No string concatenation for file paths.
+- **Import Strategy**: Avoid lazy imports unless there is no practical alternative.
 - **Logging**: Use `logger = logging.getLogger(__name__)`. Log significant events during discovery and collection.
 - **TUI Logic**: All Textual widgets should stay in the TUI layer. Event handlers use `async def`.
 - **Docstrings**: NumPy style. Include `Parameters`, `Returns`, and `Raises` sections.

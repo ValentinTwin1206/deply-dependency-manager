@@ -23,6 +23,10 @@ class VSCEPlugin(BasePlugin):
     def dependency_files(self) -> tuple[str, ...]:
         return ("devcontainer.json",)
 
+    @property
+    def default_file(self) -> str:
+        return "devcontainer.json"
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

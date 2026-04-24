@@ -41,19 +41,20 @@ class BasePlugin(ABC):
         """
 
     @property
+    @abstractmethod
     def default_file(self) -> str:
         """Filename used by :meth:`collect` when no file is specified.
 
-        Defaults to the first entry of :attr:`dependency_files`.
-        Plugins may override this when they want to prefer a different
-        file from the tuple (for example, ``pylock.toml`` over ``uv.lock``).
+        Subclasses **must** implement this property. It should return
+        one of the entries in :attr:`dependency_files`, representing
+        the preferred file to parse when the user does not pass
+        ``--file`` explicitly.
 
         Returns
         -------
         str
             The basename of the file used when ``--file`` is omitted.
         """
-        return self.dependency_files[0]
 
     @abstractmethod
     def collect(self, path: str | Path, file: str | None = None) -> None:

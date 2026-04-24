@@ -72,7 +72,10 @@ Every plugin lives at `src/depsight/core/plugins/<name>/<name>.py`.
 
 - **Type aliases**: Use PEP 695 `type Alias = ...` syntax.
 - **Import order**: stdlib → third-party (Rich, Click, Textual) → `# local imports` (absolute: `from depsight.core...`).
+- **Constants**: Define global constant values in `constants.py`.
+- **Reusable modules**: Implement reusable shared helpers in `utils.py`.
 - **Paths**: `pathlib.Path` only. No `os.path`, no string concatenation for paths.
+- **Import strategy**: Avoid lazy imports unless there is no practical alternative.
 - **Output**: `rich.console` for user-facing output; `logging` for status/debug. No `print()`.
 - **Logging**: `logger = logging.getLogger(__name__)`. Log during discovery and collection.
 - **State**: No globals. Pass state via classes or dependency injection.
